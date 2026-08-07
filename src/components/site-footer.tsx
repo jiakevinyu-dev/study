@@ -1,6 +1,6 @@
 import { Mail } from "lucide-react";
 import { site } from "@/lib/data";
-import { GithubIcon, LinkedinIcon } from "@/components/icons";
+import { LinkedinIcon } from "@/components/icons";
 
 export function SiteFooter() {
   const year = new Date().getFullYear();
@@ -23,15 +23,6 @@ export function SiteFooter() {
             className="text-muted transition-colors hover:text-fg"
           >
             <LinkedinIcon className="h-[18px] w-[18px]" />
-          </a>
-          <a
-            href={site.social.github}
-            target="_blank"
-            rel="noreferrer noopener"
-            aria-label="GitHub"
-            className="text-muted transition-colors hover:text-fg"
-          >
-            <GithubIcon className="h-[18px] w-[18px]" />
           </a>
         </div>
       </div>

@@ -3,7 +3,6 @@
 import { motion } from "framer-motion";
 import { ArrowUpRight, Lock } from "lucide-react";
 import type { Project } from "@/lib/data";
-import { GithubIcon } from "@/components/icons";
 import { cn } from "@/lib/utils";
 
 export function ProjectCard({ project, className }: { project: Project; className?: string }) {
@@ -55,30 +54,17 @@ export function ProjectCard({ project, className }: { project: Project; classNam
         ))}
       </div>
 
-      {(project.github || project.demo) && (
+      {project.demo && (
         <div className="mt-6 flex items-center gap-4 border-t border-border pt-5">
-          {project.github && (
-            <a
-              href={project.github}
-              target="_blank"
-              rel="noreferrer noopener"
-              className="inline-flex items-center gap-1.5 text-sm font-medium text-fg transition-colors hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-sm"
-            >
-              <GithubIcon className="h-4 w-4" aria-hidden="true" />
-              Source
-            </a>
-          )}
-          {project.demo && (
-            <a
-              href={project.demo}
-              target="_blank"
-              rel="noreferrer noopener"
-              className="inline-flex items-center gap-1.5 text-sm font-medium text-fg transition-colors hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-sm"
-            >
-              Live demo
-              <ArrowUpRight className="h-3.5 w-3.5" aria-hidden="true" />
-            </a>
-          )}
+          <a
+            href={project.demo}
+            target="_blank"
+            rel="noreferrer noopener"
+            className="inline-flex items-center gap-1.5 text-sm font-medium text-fg transition-colors hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-sm"
+          >
+            Live demo
+            <ArrowUpRight className="h-3.5 w-3.5" aria-hidden="true" />
+          </a>
         </div>
       )}
     </motion.article>

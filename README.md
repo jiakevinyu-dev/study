@@ -7,9 +7,9 @@ A production-ready personal portfolio built with **Next.js (App Router)**, **Typ
 - **Hero** — value proposition, quick stats, and an animated SVG chart motif.
 - **About** — bio, current role, and education.
 - **Experience** — a timeline of roles from SDET/software engineering through data science.
-- **Projects** — a grid of featured work (enterprise engagements described at a public-safe level, plus an open-source project linking to real source).
+- **Projects** — a grid of featured work, described at a level safe to share publicly.
 - **Skills** — grouped technology tags.
-- **Contact** — direct links (email, phone, LinkedIn, GitHub) and an accessible form that opens a pre-filled email.
+- **Contact** — direct links (email, phone, LinkedIn) and an accessible form that opens a pre-filled email.
 
 ## Stack
 
@@ -46,8 +46,7 @@ The résumé served from the "Resume" button is at [`public/resume.pdf`](./publi
 ## Q-Q Plot toolkit
 
 This repo also contains a small, independent Python utility for Quantile-Quantile plots
-([`qq_plot.py`](./qq_plot.py)) — see the "Statistical Distribution Analysis Toolkit" project card on the
-site, or run it directly:
+([`qq_plot.py`](./qq_plot.py)), unrelated to the portfolio site:
 
 ```bash
 pip install -r requirements.txt

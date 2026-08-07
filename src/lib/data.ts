@@ -7,9 +7,8 @@ export const site = {
   email: "jiakevinyu@gmail.com",
   phone: "+1 (832) 277-1669",
   phoneDisplay: "(832) 277-1669",
-  // NOTE: update these handles to your real profiles if they differ.
+  // NOTE: update this handle to your real profile if it differs.
   social: {
-    github: "https://github.com/jiakevinyu-dev",
     linkedin: "https://www.linkedin.com/in/jiakevinyu",
   },
   tagline: "I turn ambiguous data into decisions worth trusting.",
@@ -32,7 +31,6 @@ export type Project = {
   description: string;
   metrics: { label: string; value: string }[];
   tags: string[];
-  github?: string;
   demo?: string;
   featured?: boolean;
   confidential?: boolean;
@@ -84,20 +82,6 @@ export const projects: Project[] = [
     ],
     tags: ["Python", "XGBoost", "AWS SageMaker", "Redshift", "Athena", "ETL"],
     confidential: true,
-  },
-  {
-    slug: "qq-plot-toolkit",
-    title: "Statistical Distribution Analysis Toolkit",
-    org: "Personal / Open Source",
-    period: "2026",
-    description:
-      "A from-scratch Python library for building Q-Q plots — comparing sample data against theoretical or fitted distributions for fast, visual exploratory data analysis.",
-    metrics: [
-      { label: "distributions supported", value: "scipy.stats" },
-      { label: "dependencies", value: "3" },
-    ],
-    tags: ["Python", "NumPy", "SciPy", "Matplotlib"],
-    github: "https://github.com/jiakevinyu-dev/study",
   },
   {
     slug: "clippers-ticket-revenue",

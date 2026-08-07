@@ -4,7 +4,7 @@ import { site } from "@/lib/data";
 import { Reveal } from "@/components/reveal";
 import { SectionHeading } from "@/components/section-heading";
 import { ContactForm } from "@/components/contact-form";
-import { GithubIcon, LinkedinIcon } from "@/components/icons";
+import { LinkedinIcon } from "@/components/icons";
 
 export function Contact() {
   return (
@@ -21,7 +21,6 @@ export function Contact() {
             <ContactLink icon={Mail} label="Email" value={site.email} href={`mailto:${site.email}`} />
             <ContactLink icon={Phone} label="Phone" value={site.phoneDisplay} href={`tel:${site.phone}`} />
             <ContactLink icon={LinkedinIcon} label="LinkedIn" value="in/jiakevinyu" href={site.social.linkedin} external />
-            <ContactLink icon={GithubIcon} label="GitHub" value="jiakevinyu-dev" href={site.social.github} external />
             <ContactLink icon={MapPin} label="Location" value={site.location} />
           </Reveal>
 

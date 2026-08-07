@@ -13,7 +13,7 @@ export function Projects() {
         <SectionHeading
           eyebrow="Selected work"
           title="A few projects worth a closer look."
-          description="Enterprise engagements are described at the level I'm able to share publicly; the open-source project links straight to source."
+          description="Enterprise engagements are described at the level I'm able to share publicly. Full detail is available on request or in the resume."
         />
 
         <RevealGroup className="mt-14 grid gap-5 sm:grid-cols-2">

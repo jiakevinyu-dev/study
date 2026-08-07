@@ -39,9 +39,9 @@ export function Hero() {
           transition={{ duration: 0.7, delay: 0.16, ease: [0.22, 1, 0.36, 1] }}
           className="mt-6 max-w-xl text-balance text-lg leading-relaxed text-muted"
         >
-          I&rsquo;m {site.name}, a data scientist who has shipped models inside $1B+ risk
-          programs and automated marketing systems reaching millions &mdash; grounded in
-          statistics, built for production.
+          I&rsquo;m {site.name}, a data scientist who has led model risk validation for
+          $1B+ in financial exposure and rebuilt marketing systems that reach millions of
+          customers.
         </motion.p>
 
         <motion.div
@@ -51,10 +51,12 @@ export function Hero() {
           className="mt-9 flex flex-wrap items-center gap-4"
         >
           <a
-            href="#projects"
+            href="/resume.pdf"
+            target="_blank"
+            rel="noopener noreferrer"
             className="group inline-flex h-11 items-center gap-1.5 rounded-full bg-fg px-6 text-sm font-medium text-bg transition-transform hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-bg"
           >
-            View projects
+            View resume
             <ArrowUpRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
           </a>
           <a

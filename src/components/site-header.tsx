@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { Menu, X } from "lucide-react";
 import { nav, site } from "@/lib/data";
 import { ThemeToggle } from "@/components/theme-toggle";
-import { GithubIcon, LinkedinIcon } from "@/components/icons";
+import { LinkedinIcon } from "@/components/icons";
 import { cn } from "@/lib/utils";
 
 export function SiteHeader() {
@@ -59,15 +59,6 @@ export function SiteHeader() {
 
         <div className="hidden items-center gap-3 md:flex">
           <a
-            href={site.social.github}
-            target="_blank"
-            rel="noreferrer noopener"
-            aria-label="GitHub profile"
-            className="text-muted transition-colors hover:text-fg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-sm"
-          >
-            <GithubIcon className="h-[18px] w-[18px]" />
-          </a>
-          <a
             href={site.social.linkedin}
             target="_blank"
             rel="noreferrer noopener"
@@ -116,9 +107,6 @@ export function SiteHeader() {
             ))}
           </nav>
           <div className="mt-4 flex items-center gap-5">
-            <a href={site.social.github} target="_blank" rel="noreferrer noopener" aria-label="GitHub profile" className="text-muted hover:text-fg">
-              <GithubIcon className="h-5 w-5" />
-            </a>
             <a href={site.social.linkedin} target="_blank" rel="noreferrer noopener" aria-label="LinkedIn profile" className="text-muted hover:text-fg">
               <LinkedinIcon className="h-5 w-5" />
             </a>
