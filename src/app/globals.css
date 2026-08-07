@@ -1,0 +1,121 @@
+@import "tailwindcss";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+:root {
+  --bg: #faf9f6;
+  --bg-elevated: #ffffff;
+  --bg-inset: #f2f0ea;
+  --fg: #16151a;
+  --muted: #625f58;
+  --border: #e6e3da;
+  --border-strong: #d8d4c8;
+  --accent: #a86a1f;
+  --accent-soft: #f1e2c8;
+  --accent-fg: #fffaf0;
+  --ring: #a86a1f;
+}
+
+.dark {
+  --bg: #0b0b0c;
+  --bg-elevated: #131315;
+  --bg-inset: #17171a;
+  --fg: #f3f1ea;
+  --muted: #9a978d;
+  --border: #232226;
+  --border-strong: #302f33;
+  --accent: #e7ab4c;
+  --accent-soft: #2c2312;
+  --accent-fg: #191207;
+  --ring: #e7ab4c;
+}
+
+@theme inline {
+  --color-bg: var(--bg);
+  --color-bg-elevated: var(--bg-elevated);
+  --color-bg-inset: var(--bg-inset);
+  --color-fg: var(--fg);
+  --color-muted: var(--muted);
+  --color-border: var(--border);
+  --color-border-strong: var(--border-strong);
+  --color-accent: var(--accent);
+  --color-accent-soft: var(--accent-soft);
+  --color-accent-fg: var(--accent-fg);
+  --color-ring: var(--ring);
+
+  --font-display: var(--font-fraunces);
+  --font-sans: var(--font-inter);
+  --font-mono: var(--font-mono-plex);
+
+  --animate-marquee: marquee 32s linear infinite;
+}
+
+@keyframes marquee {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+html {
+  scroll-behavior: smooth;
+  scroll-padding-top: 5.5rem;
+  color-scheme: light;
+}
+
+html.dark {
+  color-scheme: dark;
+}
+
+body {
+  background: var(--bg);
+  color: var(--fg);
+  font-family: var(--font-sans);
+}
+
+::selection {
+  background: var(--accent);
+  color: var(--accent-fg);
+}
+
+/* subtle scrollbar */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--border-strong);
+  border-radius: 999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--muted);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* faint dot-grid texture used behind the hero / section backdrops */
+.bg-grid {
+  background-image: radial-gradient(var(--border-strong) 1px, transparent 1px);
+  background-size: 22px 22px;
+}
+
+.text-balance {
+  text-wrap: balance;
+}
