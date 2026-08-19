@@ -1,0 +1,197 @@
+/**
+ * Core domain types for the Fantasy Football Redraft War Room.
+ *
+ * Nothing in this module hits the network or the DOM — it's the shared
+ * vocabulary that the Sleeper client, the scoring/scarcity/injury/SoS
+ * engines, and the UI all speak.
+ */
+
+export type Position = "QB" | "RB" | "WR" | "TE";
+
+/** Roster slot types a league can start players in. */
+export type SlotType = "QB" | "RB" | "WR" | "TE" | "FLEX" | "SUPER_FLEX";
+
+/** Which real positions can fill a given slot. */
+export const SLOT_ELIGIBILITY: Record<SlotType, Position[]> = {
+  QB: ["QB"],
+  RB: ["RB"],
+  WR: ["WR"],
+  TE: ["TE"],
+  FLEX: ["RB", "WR", "TE"],
+  SUPER_FLEX: ["QB", "RB", "WR", "TE"],
+};
+
+/**
+ * Points-per-stat scoring settings. Defaults model a standard 12-team
+ * PPR, no-TE-premium league (teRecBonus: 0). Every field is user-editable
+ * in the settings panel, and every player's fantasy points are recomputed
+ * live from these — nothing is pre-baked.
+ */
+export type ScoringSettings = {
+  passYd: number;
+  passTd: number;
+  passInt: number;
+  pass2pt: number;
+  rushYd: number;
+  rushTd: number;
+  rush2pt: number;
+  rec: number;
+  recYd: number;
+  recTd: number;
+  /** Extra points per TE reception. Standard / no-TE-premium = 0. */
+  teRecBonus: number;
+  rec2pt: number;
+  fumbleLost: number;
+};
+
+export const DEFAULT_SCORING: ScoringSettings = {
+  passYd: 0.04, // 1 pt / 25 yds
+  passTd: 4,
+  passInt: -2,
+  pass2pt: 2,
+  rushYd: 0.1, // 1 pt / 10 yds
+  rushTd: 6,
+  rush2pt: 2,
+  rec: 1, // full PPR
+  recYd: 0.1,
+  recTd: 6,
+  teRecBonus: 0, // no TE premium
+  rec2pt: 2,
+  fumbleLost: -2,
+};
+
+/** How many of each slot type each team starts. */
+export type RosterSlots = {
+  QB: number;
+  RB: number;
+  WR: number;
+  TE: number;
+  FLEX: number;
+  SUPER_FLEX: number;
+  BENCH: number;
+};
+
+export const DEFAULT_ROSTER: RosterSlots = {
+  QB: 1,
+  RB: 2,
+  WR: 2,
+  TE: 1,
+  FLEX: 1,
+  SUPER_FLEX: 1,
+  BENCH: 6,
+};
+
+export type LeagueSettings = {
+  teams: number;
+  scoring: ScoringSettings;
+  roster: RosterSlots;
+  /** Fantasy playoff weeks, used to weight SoS toward the games that matter. */
+  playoffWeeks: number[];
+  leagueName?: string;
+  /** Present once settings were pulled from a real Sleeper league. */
+  sleeperLeagueId?: string;
+};
+
+export const DEFAULT_LEAGUE: LeagueSettings = {
+  teams: 12,
+  scoring: DEFAULT_SCORING,
+  roster: DEFAULT_ROSTER,
+  playoffWeeks: [15, 16, 17],
+  leagueName: "12-Team Superflex PPR (No TE Premium)",
+};
+
+/** Raw counting-stat projection for a season, used to derive fantasy points. */
+export type StatProjection = {
+  passYd?: number;
+  passTd?: number;
+  passInt?: number;
+  pass2pt?: number;
+  rushYd?: number;
+  rushTd?: number;
+  rush2pt?: number;
+  rec?: number;
+  recYd?: number;
+  recTd?: number;
+  rec2pt?: number;
+  fumbleLost?: number;
+  gamesMissedLastSeason?: number;
+};
+
+export type InjuryStatus = "Healthy" | "Questionable" | "Doubtful" | "Out" | "IR" | "PUP" | "Suspended";
+
+export type PlayerSource = "sleeper" | "csv" | "manual";
+
+export type Player = {
+  id: string;
+  name: string;
+  position: Position;
+  team: string | null;
+  age: number | null;
+  yearsExp: number | null;
+  injuryStatus: InjuryStatus;
+  injuryBodyPart: string | null;
+  depthChartOrder: number | null;
+  /** Sleeper's internal consensus rank (lower = better), used as an ADP proxy. */
+  searchRank: number | null;
+  /** Overall ADP if synced/imported from a real source (lower = better). */
+  adp: number | null;
+  /** Raw stat-line projection, when available — enables full scoring dynamism. */
+  projStats: StatProjection | null;
+  source: PlayerSource;
+  rosteredBy: string | null;
+};
+
+export type ScheduleEntry = {
+  team: string;
+  week: number;
+  opponent: string | "BYE";
+  homeAway: "home" | "away" | null;
+};
+
+/** Defense-vs-position strength. rank 1 = toughest matchup, 32 = easiest. */
+export type DefenseRating = {
+  team: string;
+  position: Position;
+  rankVsPosition: number;
+};
+
+export type ValuedPlayer = Player & {
+  /** Fantasy points for the season under the current league scoring. */
+  points: number;
+  /** Whether points came from a real stat projection or an ADP-decay estimate. */
+  pointsBasis: "projection" | "adp-estimate";
+  positionRank: number;
+};
+
+export type ScarcityResult = {
+  replacementLevel: Record<Position, number>;
+  startersByPosition: Record<Position, number>;
+  players: (ValuedPlayer & {
+    vbd: number;
+    /** Local steepness of the value curve just below this player, at his position. */
+    cliff: number;
+    tier: number;
+  })[];
+};
+
+export type InjuryRisk = {
+  score: number; // 0-100, higher = riskier
+  tier: "Low" | "Moderate" | "Elevated" | "High";
+  factors: string[];
+};
+
+export type SosResult = {
+  fullSeasonGrade: number | null; // 0-100, higher = easier schedule
+  playoffGrade: number | null;
+  gamesFound: number;
+  playoffGamesFound: number;
+};
+
+export type WarRoomRow = ValuedPlayer & {
+  vbd: number;
+  cliff: number;
+  tier: number;
+  injury: InjuryRisk;
+  sos: SosResult;
+  compositeValue: number;
+};

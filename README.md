@@ -43,6 +43,30 @@ guesses; double-check `site.social` before shipping.
 
 The résumé served from the "Resume" button is at [`public/resume.pdf`](./public/resume.pdf).
 
+## Fantasy Football Redraft War Room
+
+A dynamic draft-board tool at [`/fantasy`](./src/app/fantasy/page.tsx) for a 12-team superflex, PPR,
+no-TE-premium redraft league — built as a live model, not a static list:
+
+- **Sleeper sync** ([`src/lib/fantasy/sleeper.ts`](./src/lib/fantasy/sleeper.ts)) — pulls the real player pool
+  (names, teams, age, live injury designations) and, optionally, a real league's roster slots and scoring
+  straight from Sleeper's public API, entirely client-side.
+- **Positional scarcity** ([`src/lib/fantasy/scarcity.ts`](./src/lib/fantasy/scarcity.ts)) — a roster-construction
+  simulation (dedicated slots → FLEX → SUPERFLEX) finds each position's replacement level dynamically, so
+  superflex correctly inflates QB value on its own rather than via a hardcoded multiplier.
+- **Injury risk** ([`src/lib/fantasy/injury-risk.ts`](./src/lib/fantasy/injury-risk.ts)) — a transparent, documented
+  0–100 heuristic (current designation + position/age curve + optional missed-games history), not a black box.
+- **Strength of schedule** ([`src/lib/fantasy/sos.ts`](./src/lib/fantasy/sos.ts)) — computed only from schedule and
+  defense-vs-position data you sync or import; nothing is shipped pre-loaded, since this repo was built without
+  outbound network access to verify a real current-season schedule.
+- **Scoring engine** ([`src/lib/fantasy/scoring.ts`](./src/lib/fantasy/scoring.ts)) — every league setting (PPR
+  value, TE premium, roster slots, playoff weeks) is a live control in the UI; the whole board recomputes on
+  every change.
+
+CSV import (with downloadable templates) covers ADP/rankings, full stat projections, schedule, defense ratings,
+and injury history for anyone who'd rather bring their own data than sync Sleeper. See the in-app
+**Methodology & Data Sources** panel for exactly how each number is computed.
+
 ## Q-Q Plot toolkit
 
 This repo also contains a small, independent Python utility for Quantile-Quantile plots
