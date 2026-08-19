@@ -12,6 +12,11 @@ const ITEMS = [
       "A greedy, value-ordered simulation fills your league's actual roster slots — dedicated QB/RB/WR/TE, then FLEX, then SUPERFLEX — across all teams. Whatever's left at each position once its slots run dry sets that position's replacement level. Value above that level (VBD) is what makes superflex correctly inflate QB value: QBs win most SUPERFLEX slots because the 13th-24th best QB usually outscores the equivalent RB/WR, and the simulation finds that on its own. The board sorts by VBD by default — pure value-over-replacement, not risk-adjusted — because that's the number to draft off of. The Δ Next column next to it shows the cost of waiting: points lost to the next-best player at that same position, i.e. what you give up if he's gone by your next pick.",
   },
   {
+    title: "Tiers — the opportunity-cost check VBD alone misses",
+    body:
+      "VBD only compares a player to the worst startable player at his position — it doesn't say whether there's a near-twin of him sitting three picks later. Tiers do: at each position, players are clustered by real gaps in the value curve (a gap only starts a new tier once it's at least 12% of that position's VBD range), so a top-heavy position naturally gets a lonely Tier 1 and a big Tier 2, while a position that declines evenly gets many small tiers. Worked example: a locked-in TE1 sitting alone in Tier 1 with six comparable TEs bunched in Tier 2 a few points back shows up as 'T1 · 1 deep' — spending an early pick there costs you a scarcer position's Tier 1 for a TE edge you could've had two rounds later. The Tier column and the chart's bar gaps show this at every position; the Best Available banner calls out the tier context for whoever's on top.",
+  },
+  {
     title: "Injury risk",
     body:
       "A transparent 0-100 heuristic, not a medical prediction: current Sleeper injury designation, a position/age decline curve, a position base rate for workload and contact exposure, and — if imported — recent games missed. Hover any Injury badge to see exactly which factors contributed.",

@@ -38,8 +38,15 @@ export const EXAMPLE_PLAYERS: ImportedPlayerRow[] = [
   row("Example WR5", "WR", "EX5", { rec: 65, recYd: 800, recTd: 5 }),
   row("Example WR6", "WR", "EX6", { rec: 55, recYd: 700, recTd: 4 }),
 
-  row("Example TE1", "TE", "EX1", { rec: 80, recYd: 950, recTd: 8 }),
-  row("Example TE2", "TE", "EX2", { rec: 65, recYd: 750, recTd: 6 }),
-  row("Example TE3", "TE", "EX3", { rec: 50, recYd: 550, recTd: 4 }),
-  row("Example TE4", "TE", "EX4", { rec: 40, recYd: 420, recTd: 3 }),
+  // TE1 is deliberately shaped as a lone elite outlier followed by a tight
+  // plateau (TE2-TE6 within ~20 pts of each other) — this is the exact
+  // "great TE, but plenty of others can produce close to what he does"
+  // shape the tiering feature exists to surface: Tier 1 = 1 player, Tier 2
+  // = 5 players a few picks later.
+  row("Example TE1", "TE", "EX1", { rec: 90, recYd: 1050, recTd: 10 }),
+  row("Example TE2", "TE", "EX2", { rec: 62, recYd: 720, recTd: 5 }),
+  row("Example TE3", "TE", "EX3", { rec: 60, recYd: 700, recTd: 5 }),
+  row("Example TE4", "TE", "EX4", { rec: 58, recYd: 680, recTd: 5 }),
+  row("Example TE5", "TE", "EX5", { rec: 56, recYd: 660, recTd: 4 }),
+  row("Example TE6", "TE", "EX6", { rec: 54, recYd: 640, recTd: 4 }),
 ];

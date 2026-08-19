@@ -77,14 +77,25 @@ export function computeScarcity(players: ValuedPlayer[], league: LeagueSettings)
     replacementLevel[pos] = group.length > 0 ? group[idx]?.points ?? group[group.length - 1].points : 0;
   }
 
-  // VBD, local cliff (points lost to the next player at the same position),
-  // and simple quintile tiers within each position.
+  // VBD and local cliff (points lost to the very next player at the same
+  // position) first.
   const withVbd = sorted.map((p) => ({
     ...p,
     vbd: Math.round((p.points - replacementLevel[p.position]) * 10) / 10,
     cliff: 0,
     tier: 1,
+    tierSize: 1,
   }));
+
+  // Tiers are detected from real gaps in the value curve, not an arbitrary
+  // top-N split — this is the piece that actually answers "if I pass on
+  // this guy, is there a similar one left, or does the position fall off a
+  // cliff?" A position that's top-heavy (one clear QB1, then a plateau)
+  // gets a lonely tier 1 and a big tier 2; a position that declines evenly
+  // gets many small tiers. A gap only starts a new tier once it's at least
+  // TIER_GAP_FRACTION of that position's whole VBD range, so noise in the
+  // middle of the pack doesn't fragment it into dozens of one-man tiers.
+  const TIER_GAP_FRACTION = 0.12;
 
   for (const pos of POSITIONS) {
     const group = withVbd.filter((p) => p.position === pos).sort((a, b) => b.points - a.points);
@@ -92,12 +103,17 @@ export function computeScarcity(players: ValuedPlayer[], league: LeagueSettings)
       const next = group[idx + 1];
       p.cliff = next ? Math.round((p.points - next.points) * 10) / 10 : 0;
     });
-    // Tier by VBD relative to the top VBD at the position, in 5 bands.
-    const topVbd = group[0]?.vbd ?? 1;
-    group.forEach((p) => {
-      const ratio = topVbd > 0 ? Math.max(p.vbd, 0) / topVbd : 0;
-      p.tier = ratio > 0.8 ? 1 : ratio > 0.6 ? 2 : ratio > 0.4 ? 3 : ratio > 0.2 ? 4 : 5;
+
+    const range = Math.max((group[0]?.points ?? 0) - replacementLevel[pos], 1);
+    const gapThreshold = range * TIER_GAP_FRACTION;
+    let tier = 1;
+    group.forEach((p, idx) => {
+      if (idx > 0 && group[idx - 1].points - p.points >= gapThreshold) tier += 1;
+      p.tier = tier;
     });
+    const tierCounts = new Map<number, number>();
+    for (const p of group) tierCounts.set(p.tier, (tierCounts.get(p.tier) ?? 0) + 1);
+    for (const p of group) p.tierSize = tierCounts.get(p.tier) ?? 1;
   }
 
   return {

@@ -170,7 +170,10 @@ export type ScarcityResult = {
     vbd: number;
     /** Local steepness of the value curve just below this player, at his position. */
     cliff: number;
+    /** Gap-detected value tier at this position — 1 is the top tier. Not a fixed top-N split. */
     tier: number;
+    /** How many players (including this one) share this tier at this position. */
+    tierSize: number;
   })[];
 };
 
@@ -191,6 +194,7 @@ export type WarRoomRow = ValuedPlayer & {
   vbd: number;
   cliff: number;
   tier: number;
+  tierSize: number;
   injury: InjuryRisk;
   sos: SosResult;
   compositeValue: number;

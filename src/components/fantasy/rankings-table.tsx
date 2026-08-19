@@ -6,7 +6,7 @@ import type { Player, Position, WarRoomRow } from "@/lib/fantasy/types";
 import { cn } from "@/lib/utils";
 import { Badge } from "./ui";
 
-type SortKey = "composite" | "vbd" | "cliff" | "points" | "adp" | "injury" | "sos";
+type SortKey = "composite" | "vbd" | "cliff" | "tier" | "points" | "adp" | "injury" | "sos";
 
 const POSITION_FILTERS: ("ALL" | Position)[] = ["ALL", "QB", "RB", "WR", "TE"];
 
@@ -45,6 +45,11 @@ export function RankingsTable({ rows, watchlist, drafted, excludedPlayers, onTog
         return r.vbd;
       case "cliff":
         return r.cliff;
+      case "tier":
+        // Sort ascending-friendly: earlier (smaller) tier number ranks
+        // higher, and within a tier a lonelier one (smaller tierSize) ranks
+        // higher — so the default desc click surfaces the scarcest players.
+        return -(r.tier * 1000 + r.tierSize);
       case "points":
         return r.points;
       case "adp":
@@ -77,6 +82,11 @@ export function RankingsTable({ rows, watchlist, drafted, excludedPlayers, onTog
     return [...pool].sort((a, b) => b.vbd - a.vbd)[0] ?? null;
   }, [rows, drafted, posFilter]);
 
+  const urgencyLabel = (r: WarRoomRow) =>
+    r.tierSize <= 1
+      ? `alone in Tier ${r.tier} — high urgency`
+      : `Tier ${r.tier} of ${r.tierSize} at ${r.position} — ${r.tierSize - 1} similar option${r.tierSize - 1 === 1 ? "" : "s"} left, safe to wait`;
+
   function toggleSort(key: SortKey) {
     if (sortKey === key) {
       setSortDir((d) => (d === -1 ? 1 : -1));
@@ -90,6 +100,12 @@ export function RankingsTable({ rows, watchlist, drafted, excludedPlayers, onTog
     { key: "points", label: "Pts" },
     { key: "vbd", label: "VBD", title: "Value over this position's replacement level (last starter-quality player)" },
     { key: "cliff", label: "Δ Next", title: "Points lost to the next-best player at the same position — the cost of waiting one more pick" },
+    {
+      key: "tier",
+      label: "Tier",
+      title:
+        "Gap-detected value tier at this position, not a fixed top-N split. A lonely tier (size 1) means passing on him costs real value — a big tier means plenty of similar options remain, so it's safe to draft elsewhere and come back.",
+    },
     { key: "adp", label: "ADP" },
     { key: "injury", label: "Injury" },
     { key: "sos", label: "SoS (Playoffs)" },
@@ -109,6 +125,18 @@ export function RankingsTable({ rows, watchlist, drafted, excludedPlayers, onTog
               replacement
               {bestAvailable.cliff > 0 && (
                 <span className="text-muted"> · {bestAvailable.cliff.toFixed(1)} pts more than the next-best {bestAvailable.position}</span>
+              )}
+            </p>
+            <p className="mt-1 text-xs text-muted">
+              {bestAvailable.tierSize <= 1 ? (
+                <>
+                  Alone in Tier {bestAvailable.tier} at {bestAvailable.position} — the next tier drops off, so this value doesn&rsquo;t come back.
+                </>
+              ) : (
+                <>
+                  Tier {bestAvailable.tier} of {bestAvailable.tierSize} similar {bestAvailable.position}s — {bestAvailable.tierSize - 1} more
+                  within reach of this value, so it&rsquo;s safe to take a scarcer position now and circle back.
+                </>
               )}
             </p>
           </div>
@@ -152,7 +180,7 @@ export function RankingsTable({ rows, watchlist, drafted, excludedPlayers, onTog
         </div>
 
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[920px] text-left text-sm">
+          <table className="w-full min-w-[1040px] text-left text-sm">
             <thead>
               <tr className="border-b border-border text-xs uppercase tracking-wide text-muted">
                 <th className="w-10 px-3 py-2.5" />
@@ -211,6 +239,11 @@ export function RankingsTable({ rows, watchlist, drafted, excludedPlayers, onTog
                     </td>
                     <td className="px-3 py-2.5 font-mono text-xs font-medium text-fg">{r.vbd.toFixed(1)}</td>
                     <td className="px-3 py-2.5 font-mono text-xs text-muted">{r.cliff > 0 ? `−${r.cliff.toFixed(1)}` : "—"}</td>
+                    <td className="px-3 py-2.5" title={urgencyLabel(r)}>
+                      <Badge tone={r.tierSize <= 1 ? "bad" : r.tierSize <= 3 ? "neutral" : "good"}>
+                        T{r.tier} · {r.tierSize} deep
+                      </Badge>
+                    </td>
                     <td className="px-3 py-2.5 font-mono text-xs text-muted">{r.adp ?? r.searchRank ?? "—"}</td>
                     <td className="px-3 py-2.5" title={r.injury.factors.join("\n")}>
                       <Badge tone={INJURY_TONE[r.injury.tier]}>
@@ -263,7 +296,7 @@ export function RankingsTable({ rows, watchlist, drafted, excludedPlayers, onTog
               })}
               {filtered.length === 0 && (
                 <tr>
-                  <td colSpan={12} className="px-3 py-10 text-center text-sm text-muted">
+                  <td colSpan={13} className="px-3 py-10 text-center text-sm text-muted">
                     No players match. Sync Sleeper or import a CSV from Data Sources above.
                   </td>
                 </tr>
