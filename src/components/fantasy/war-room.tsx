@@ -2,10 +2,12 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { buildWarRoomBoard } from "@/lib/fantasy/engine";
+import type { SleeperDraftPick } from "@/lib/fantasy/sleeper";
 import {
   clearAllFantasyData,
   loadDefense,
   loadDrafted,
+  loadExcluded,
   loadGamesMissed,
   loadLeague,
   loadPlayers,
@@ -14,6 +16,7 @@ import {
   loadWatchlist,
   saveDefense,
   saveDrafted,
+  saveExcluded,
   saveGamesMissed,
   saveLeague,
   savePlayers,
@@ -40,6 +43,7 @@ type Store = {
   gamesMissed: Record<string, number>;
   watchlist: Set<string>;
   drafted: Set<string>;
+  excluded: Set<string>;
 };
 
 const EMPTY_STORE: Store = {
@@ -52,11 +56,12 @@ const EMPTY_STORE: Store = {
   gamesMissed: {},
   watchlist: new Set(),
   drafted: new Set(),
+  excluded: new Set(),
 };
 
 export function WarRoom() {
   const [store, setStore] = useState<Store>(EMPTY_STORE);
-  const { hydrated, players, syncedAt, league, schedule, defense, gamesMissed, watchlist, drafted } = store;
+  const { hydrated, players, syncedAt, league, schedule, defense, gamesMissed, watchlist, drafted, excluded } = store;
 
   // Hydrate from localStorage on mount. This is a deliberate exception to
   // react-hooks/set-state-in-effect: localStorage isn't readable during SSR,
@@ -78,6 +83,7 @@ export function WarRoom() {
       gamesMissed: loadGamesMissed(),
       watchlist: new Set(loadWatchlist()),
       drafted: new Set(loadDrafted()),
+      excluded: new Set(loadExcluded()),
     });
   }, []);
 
@@ -99,10 +105,20 @@ export function WarRoom() {
   useEffect(() => {
     if (hydrated) saveDrafted([...drafted]);
   }, [drafted, hydrated]);
+  useEffect(() => {
+    if (hydrated) saveExcluded([...excluded]);
+  }, [excluded, hydrated]);
+
+  // Excluded players (e.g. stale/retired entries a sync let through) are
+  // dropped before the board is computed, so they can't skew replacement
+  // levels for the position they'd otherwise occupy. Kept around separately
+  // (by id, from the raw pool) purely so the UI can offer an undo.
+  const activePlayers = useMemo(() => players.filter((p) => !excluded.has(p.id)), [players, excluded]);
+  const excludedPlayers = useMemo(() => players.filter((p) => excluded.has(p.id)), [players, excluded]);
 
   const { rows, scarcity } = useMemo(
-    () => buildWarRoomBoard(players, league, schedule, defense, gamesMissed),
-    [players, league, schedule, defense, gamesMissed]
+    () => buildWarRoomBoard(activePlayers, league, schedule, defense, gamesMissed),
+    [activePlayers, league, schedule, defense, gamesMissed]
   );
 
   function setPlayers(next: Player[]) {
@@ -149,6 +165,32 @@ export function WarRoom() {
     });
   }
 
+  function toggleExcluded(id: string) {
+    setStore((prev) => {
+      const next = new Set(prev.excluded);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return { ...prev, excluded: next };
+    });
+  }
+
+  function handleDraftSynced(newLeague: LeagueSettings, picks: SleeperDraftPick[]) {
+    const pickByPlayerId = new Map(picks.filter((p) => p.player_id).map((p) => [p.player_id, p.pick_no]));
+    setStore((prev) => ({
+      ...prev,
+      league: newLeague,
+      players: prev.players.map((p) =>
+        pickByPlayerId.has(p.id)
+          ? { ...p, adp: pickByPlayerId.get(p.id)!, rosteredBy: `Draft pick #${pickByPlayerId.get(p.id)}` }
+          : p
+      ),
+      drafted: new Set(pickByPlayerId.keys()),
+    }));
+  }
+
   function resetAll() {
     if (!window.confirm("Clear all synced players, settings, and imports? This can't be undone.")) return;
     clearAllFantasyData();
@@ -178,11 +220,17 @@ export function WarRoom() {
         </button>
       </div>
 
-      <StatCards rows={rows} playerCount={players.length} />
+      <StatCards rows={rows} playerCount={activePlayers.length} />
 
       <div className="mt-8 grid grid-cols-1 gap-6 lg:grid-cols-[360px_1fr]">
         <div className="space-y-6">
-          <SyncPanel syncedAt={syncedAt} playerCount={players.length} onPlayersSynced={handlePlayersSynced} onLeagueDetected={handleLeagueDetected} />
+          <SyncPanel
+            syncedAt={syncedAt}
+            playerCount={players.length}
+            onPlayersSynced={handlePlayersSynced}
+            onLeagueDetected={handleLeagueDetected}
+            onDraftSynced={handleDraftSynced}
+          />
           <SettingsPanel league={league} onChange={(l) => setStore((prev) => ({ ...prev, league: l }))} />
           <DataImportPanel
             players={players}
@@ -201,12 +249,20 @@ export function WarRoom() {
 
         <div className="space-y-6">
           <ScarcityChart scarcity={scarcity} teams={league.teams} />
-          <RankingsTable rows={rows} watchlist={watchlist} drafted={drafted} onToggleWatch={toggleWatch} onToggleDrafted={toggleDrafted} />
+          <RankingsTable
+            rows={rows}
+            watchlist={watchlist}
+            drafted={drafted}
+            excludedPlayers={excludedPlayers}
+            onToggleWatch={toggleWatch}
+            onToggleDrafted={toggleDrafted}
+            onToggleExcluded={toggleExcluded}
+          />
           <Methodology />
         </div>
       </div>
 
-      {players.length === 0 && (
+      {activePlayers.length === 0 && (
         <Card className="mt-6 text-center">
           <p className="text-sm text-muted">
             Nothing synced yet. Use <span className="font-medium text-fg">Sleeper Sync</span> above, or load the

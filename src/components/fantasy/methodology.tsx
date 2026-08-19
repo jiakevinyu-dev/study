@@ -7,9 +7,9 @@ const ITEMS = [
       "If a player has an imported stat-line projection, points are the exact dot product of that stat line with your current scoring settings — change PPR value, TE premium, or any weight and every player's points update immediately. Without a projection, points are estimated from ADP/Sleeper rank via a position-specific decay curve (marked with * in the table) — a shape approximation for sorting, not a projection.",
   },
   {
-    title: "Positional scarcity (VBD)",
+    title: "Positional scarcity (VBD) — the default sort",
     body:
-      "A greedy, value-ordered simulation fills your league's actual roster slots — dedicated QB/RB/WR/TE, then FLEX, then SUPERFLEX — across all teams. Whatever's left at each position once its slots run dry sets that position's replacement level. Value above that level (VBD) is what makes superflex correctly inflate QB value: QBs win most SUPERFLEX slots because the 13th-24th best QB usually outscores the equivalent RB/WR, and the simulation finds that on its own.",
+      "A greedy, value-ordered simulation fills your league's actual roster slots — dedicated QB/RB/WR/TE, then FLEX, then SUPERFLEX — across all teams. Whatever's left at each position once its slots run dry sets that position's replacement level. Value above that level (VBD) is what makes superflex correctly inflate QB value: QBs win most SUPERFLEX slots because the 13th-24th best QB usually outscores the equivalent RB/WR, and the simulation finds that on its own. The board sorts by VBD by default — pure value-over-replacement, not risk-adjusted — because that's the number to draft off of. The Δ Next column next to it shows the cost of waiting: points lost to the next-best player at that same position, i.e. what you give up if he's gone by your next pick.",
   },
   {
     title: "Injury risk",
@@ -24,7 +24,17 @@ const ITEMS = [
   {
     title: "Composite value",
     body:
-      "VBD, discounted by injury risk and nudged by playoff-week SoS when that data exists. This is what the board sorts by default — but every underlying metric is its own sortable column, so you can weight what matters to you at the table instead of trusting one number blindly.",
+      "VBD, discounted by injury risk and nudged by playoff-week SoS when that data exists. It's a separate, optional column — click it if you want risk baked in — but it never overrides VBD as the default sort.",
+  },
+  {
+    title: "Mock & live draft sync",
+    body:
+      "Paste a Sleeper draft ID or mock-draft URL under Sleeper Sync: every player already picked is marked drafted and gets his pick number as ADP, so the board reflects that specific draft instead of a generic ranking. Hit Refresh picks as the draft progresses.",
+  },
+  {
+    title: "Bad data? Exclude it",
+    body:
+      "Sleeper's player list keeps long-retired players on file indefinitely and doesn't always clear a stale team — this tool now requires Sleeper's active flag before a player is shown, but if anything wrong still slips through, hit the ⊘ next to any row to pull him out of the pool entirely (recomputes replacement levels without him). Excluded players are listed at the bottom of the table with one click to restore.",
   },
 ];
 

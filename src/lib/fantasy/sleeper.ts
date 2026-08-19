@@ -112,7 +112,13 @@ export async function fetchSleeperPlayers(): Promise<Player[]> {
   for (const p of Object.values(raw)) {
     const position = (p.position ?? p.fantasy_positions?.[0]) as Position | undefined;
     if (!position || !FANTASY_POSITIONS.has(position)) continue;
-    if (p.active === false && !p.team) continue;
+    // Require active === true explicitly, not just "not flagged inactive with
+    // no team." Sleeper's dump keeps long-retired players (e.g. Todd Gurley)
+    // indefinitely, and often leaves a stale `team` on file for them — so the
+    // looser "inactive AND no team" check let retired players slip through
+    // and get ranked. `active === true` is the one field Sleeper reliably
+    // flips off for anyone no longer on an NFL roster.
+    if (p.active !== true) continue;
 
     const name = p.full_name ?? [p.first_name, p.last_name].filter(Boolean).join(" ");
     if (!name) continue;
@@ -164,6 +170,91 @@ export async function fetchSleeperTrending(
 ): Promise<TrendingPlayer[]> {
   return getJson<TrendingPlayer[]>(`/players/nfl/trending/${type}?lookback_hours=${lookbackHours}&limit=${limit}`);
 }
+
+/**
+ * Accepts either a raw Sleeper draft ID or a pasted mock-draft URL
+ * (e.g. https://sleeper.com/draft/nfl/1124...  or the app-share link) and
+ * pulls out the numeric draft ID.
+ */
+export function parseDraftId(input: string): string {
+  const trimmed = input.trim();
+  const match = trimmed.match(/(\d{10,})/);
+  return match ? match[1] : trimmed;
+}
+
+export type SleeperDraft = {
+  draft_id: string;
+  type: "snake" | "linear" | "auction" | string;
+  status: "pre_draft" | "drafting" | "complete" | string;
+  season: string;
+  settings: {
+    teams?: number;
+    rounds?: number;
+    slots_qb?: number;
+    slots_rb?: number;
+    slots_wr?: number;
+    slots_te?: number;
+    slots_flex?: number;
+    slots_super_flex?: number;
+    slots_bn?: number;
+  };
+  metadata?: { scoring_type?: string };
+};
+
+/** Mock drafts and live/in-progress league drafts are both fetched the same way. */
+export async function fetchSleeperDraft(draftId: string): Promise<SleeperDraft> {
+  return getJson<SleeperDraft>(`/draft/${parseDraftId(draftId)}`);
+}
+
+export type SleeperDraftPick = {
+  pick_no: number;
+  player_id: string;
+  roster_id: number | null;
+  picked_by: string | null;
+};
+
+export async function fetchSleeperDraftPicks(draftId: string): Promise<SleeperDraftPick[]> {
+  return getJson<SleeperDraftPick[]>(`/draft/${parseDraftId(draftId)}/picks`);
+}
+
+/** Maps a Sleeper draft's settings (mock or real) onto our LeagueSettings shape. */
+export function detectDraftShape(draft: SleeperDraft) {
+  const s = draft.settings ?? {};
+  const scoringType = draft.metadata?.scoring_type ?? "ppr";
+  const rec = scoringType.startsWith("half") ? 0.5 : scoringType.startsWith("std") ? 0 : 1;
+
+  const roster = {
+    QB: s.slots_qb ?? 1,
+    RB: s.slots_rb ?? 2,
+    WR: s.slots_wr ?? 2,
+    TE: s.slots_te ?? 1,
+    FLEX: s.slots_flex ?? 1,
+    SUPER_FLEX: s.slots_super_flex ?? 0,
+    BENCH: s.slots_bn ?? 6,
+  };
+
+  return {
+    teams: s.teams ?? 12,
+    roster,
+    scoring: { ...DEFAULT_SCORING_FALLBACK, rec },
+  };
+}
+
+const DEFAULT_SCORING_FALLBACK = {
+  passYd: 0.04,
+  passTd: 4,
+  passInt: -2,
+  pass2pt: 2,
+  rushYd: 0.1,
+  rushTd: 6,
+  rush2pt: 2,
+  rec: 1,
+  recYd: 0.1,
+  recTd: 6,
+  teRecBonus: 0,
+  rec2pt: 2,
+  fumbleLost: -2,
+};
 
 /**
  * Reads a Sleeper league's own settings and maps them onto our LeagueSettings

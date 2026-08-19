@@ -3,13 +3,17 @@
 import { useState } from "react";
 import { RefreshCw, Search } from "lucide-react";
 import {
+  detectDraftShape,
   detectLeagueShape,
+  fetchSleeperDraft,
+  fetchSleeperDraftPicks,
   fetchSleeperLeague,
   fetchSleeperLeagueUsers,
   fetchSleeperPlayers,
   fetchSleeperRosters,
   fetchSleeperUser,
   fetchSleeperUserLeagues,
+  type SleeperDraftPick,
   type SleeperLeague,
 } from "@/lib/fantasy/sleeper";
 import type { LeagueSettings, Player } from "@/lib/fantasy/types";
@@ -20,9 +24,10 @@ type Props = {
   playerCount: number;
   onPlayersSynced: (players: Player[]) => void;
   onLeagueDetected: (league: LeagueSettings, rosteredByPlayerId: Map<string, string>) => void;
+  onDraftSynced: (league: LeagueSettings, picks: SleeperDraftPick[]) => void;
 };
 
-export function SyncPanel({ syncedAt, playerCount, onPlayersSynced, onLeagueDetected }: Props) {
+export function SyncPanel({ syncedAt, playerCount, onPlayersSynced, onLeagueDetected, onDraftSynced }: Props) {
   const [playerSyncState, setPlayerSyncState] = useState<"idle" | "loading" | "error">("idle");
   const [playerSyncError, setPlayerSyncError] = useState<string | null>(null);
 
@@ -32,6 +37,11 @@ export function SyncPanel({ syncedAt, playerCount, onPlayersSynced, onLeagueDete
   const [leagueSyncError, setLeagueSyncError] = useState<string | null>(null);
   const [foundLeagues, setFoundLeagues] = useState<SleeperLeague[]>([]);
   const [appliedLeagueName, setAppliedLeagueName] = useState<string | null>(null);
+
+  const [draftInput, setDraftInput] = useState("");
+  const [draftSyncState, setDraftSyncState] = useState<"idle" | "loading" | "error">("idle");
+  const [draftSyncError, setDraftSyncError] = useState<string | null>(null);
+  const [draftSummary, setDraftSummary] = useState<{ id: string; status: string; pickCount: number } | null>(null);
 
   async function syncPlayers() {
     setPlayerSyncState("loading");
@@ -97,6 +107,32 @@ export function SyncPanel({ syncedAt, playerCount, onPlayersSynced, onLeagueDete
     } catch (err) {
       setLeagueSyncState("error");
       setLeagueSyncError(err instanceof Error ? err.message : "League sync failed");
+    }
+  }
+
+  async function syncDraft(input: string) {
+    setDraftSyncState("loading");
+    setDraftSyncError(null);
+    try {
+      const draft = await fetchSleeperDraft(input);
+      const picks = await fetchSleeperDraftPicks(input);
+      const shape = detectDraftShape(draft);
+
+      onDraftSynced(
+        {
+          teams: shape.teams,
+          scoring: shape.scoring,
+          roster: shape.roster,
+          playoffWeeks: [15, 16, 17],
+          leagueName: `Sleeper draft ${draft.draft_id} (${draft.status})`,
+        },
+        picks
+      );
+      setDraftSummary({ id: draft.draft_id, status: draft.status, pickCount: picks.filter((p) => p.player_id).length });
+      setDraftSyncState("idle");
+    } catch (err) {
+      setDraftSyncState("error");
+      setDraftSyncError(err instanceof Error ? err.message : "Draft sync failed — check the draft ID or URL");
     }
   }
 
@@ -175,6 +211,46 @@ export function SyncPanel({ syncedAt, playerCount, onPlayersSynced, onLeagueDete
           <p className="text-xs text-emerald-700 dark:text-emerald-400">
             Applied settings from &ldquo;{appliedLeagueName}&rdquo; — review them below before you draft.
           </p>
+        )}
+      </div>
+
+      <div className="mt-6 space-y-3 border-t border-border pt-5">
+        <FieldLabel>Mock draft / live draft (marks picks off the board as they happen)</FieldLabel>
+        <p className="text-xs text-muted">
+          Paste the draft ID or the URL from a Sleeper mock (or a real league&rsquo;s in-progress draft). Every
+          picked player is marked drafted and gets his pick number as ADP, so the board reflects what actually
+          happened in that draft.
+        </p>
+        <div className="flex flex-wrap items-end gap-3">
+          <div className="flex-1 min-w-[180px]">
+            <input
+              className={inputClass}
+              placeholder="Draft ID or sleeper.com/draft/nfl/… URL"
+              value={draftInput}
+              onChange={(e) => setDraftInput(e.target.value)}
+            />
+          </div>
+          <button
+            type="button"
+            onClick={() => syncDraft(draftInput)}
+            disabled={!draftInput || draftSyncState === "loading"}
+            className={buttonSecondaryClass}
+          >
+            <RefreshCw className={draftSyncState === "loading" ? "mr-2 h-3.5 w-3.5 animate-spin" : "mr-2 h-3.5 w-3.5"} aria-hidden="true" />
+            Sync draft
+          </button>
+        </div>
+
+        {draftSyncState === "error" && <p className="text-xs text-red-600 dark:text-red-400">{draftSyncError}</p>}
+        {draftSummary && draftSyncState === "idle" && !draftSyncError && (
+          <div className="flex items-center justify-between gap-2 rounded-lg bg-bg-inset px-3 py-2">
+            <p className="text-xs text-emerald-700 dark:text-emerald-400">
+              Draft {draftSummary.id} &middot; {draftSummary.status} &middot; {draftSummary.pickCount} picks on the board
+            </p>
+            <button type="button" onClick={() => syncDraft(draftSummary.id)} className="shrink-0 text-xs font-medium text-accent hover:underline">
+              Refresh picks
+            </button>
+          </div>
         )}
       </div>
     </Card>
