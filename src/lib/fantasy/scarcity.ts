@@ -104,7 +104,24 @@ export function computeScarcity(players: ValuedPlayer[], league: LeagueSettings)
       p.cliff = next ? Math.round((p.points - next.points) * 10) / 10 : 0;
     });
 
-    const range = Math.max((group[0]?.points ?? 0) - replacementLevel[pos], 1);
+    // The range this threshold scales off is anchored to the average of the
+    // top 3 players at the position, not the single #1 player. A real,
+    // full-size player pool (hundreds of players, not a handful) commonly
+    // has exactly one true outlier at the top — especially where points are
+    // estimated from an ADP/search_rank decay curve rather than real
+    // per-player projections, since that curve tends to produce one sharp
+    // standout and then a smooth, near-flat tail. Anchoring off a single
+    // player let that one outlier set a threshold sized for a real
+    // superstar-to-replacement gap, which no step in a smooth decline could
+    // ever clear — merging the *entire rest of the position* into "Tier 1"
+    // with him: a nonsense "Tier 1 of 600+ players" that both hid every real
+    // tier break beneath it and mislabeled a middling player as elite.
+    // Averaging the top 3 is robust to exactly one freak outlier while still
+    // scaling to the position's real top-end spread when several players
+    // are genuinely bunched up there.
+    const topN = group.slice(0, 3);
+    const topAnchor = topN.length > 0 ? topN.reduce((sum, p) => sum + p.points, 0) / topN.length : 0;
+    const range = Math.max(topAnchor - replacementLevel[pos], 1);
     const gapThreshold = range * TIER_GAP_FRACTION;
     let tier = 1;
     group.forEach((p, idx) => {
