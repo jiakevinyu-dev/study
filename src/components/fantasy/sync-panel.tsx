@@ -195,12 +195,17 @@ export function SyncPanel({ syncedAt, playerCount, onPlayersSynced, onLeagueDete
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [draftSummary?.id, myUsername, autoRefresh, hydrated]);
 
-  // While a draft is actively in progress, poll picks automatically so Mine
-  // /Taken status and the board update as the draft happens — no manual
-  // "Refresh picks" clicks needed. Stops on its own once the draft
-  // completes, or if autoRefresh is turned off.
+  // Poll picks automatically so Mine/Taken status and the board update as
+  // the draft happens — no manual "Refresh picks" clicks needed. This has to
+  // keep polling through "pre_draft" too, not just "drafting": if you sync
+  // before the draft room opens (the normal time to paste the link) or
+  // resume a saved pre-draft connection, "drafting" is a status this same
+  // poll is the only thing that would ever discover — gating the interval on
+  // it already being "drafting" meant it could never start, and the panel
+  // sat frozen at 0 picks even once the real draft was well underway. Only
+  // "complete" actually has nothing left to learn.
   useEffect(() => {
-    if (!draftSummary || !autoRefresh || draftSummary.status !== "drafting") return;
+    if (!draftSummary || !autoRefresh || draftSummary.status === "complete") return;
     const id = setInterval(() => {
       syncDraft(draftSummary.id, myUsername, { silent: true });
     }, 6000);
@@ -337,7 +342,7 @@ export function SyncPanel({ syncedAt, playerCount, onPlayersSynced, onLeagueDete
           <div className="space-y-2 rounded-lg bg-bg-inset px-3 py-2">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <p className="text-xs text-emerald-700 dark:text-emerald-400">
-                {draftSummary.status === "drafting" && autoRefresh && (
+                {draftSummary.status !== "complete" && autoRefresh && (
                   <span className="mr-1.5 inline-block h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-500 align-middle" aria-hidden="true" />
                 )}
                 Draft {draftSummary.id} &middot; {draftSummary.status} &middot; {draftSummary.pickCount} picks on the board
@@ -356,11 +361,11 @@ export function SyncPanel({ syncedAt, playerCount, onPlayersSynced, onLeagueDete
                 </button>
               </span>
             </div>
-            {draftSummary.status === "drafting" && (
+            {draftSummary.status !== "complete" && (
               <div className="flex items-center justify-between gap-2">
                 <label className="flex items-center gap-1.5 text-xs text-muted">
                   <input type="checkbox" checked={autoRefresh} onChange={(e) => setAutoRefresh(e.target.checked)} />
-                  Auto-refresh every 6s while drafting
+                  {draftSummary.status === "pre_draft" ? "Auto-refresh every 6s — watching for the draft to start" : "Auto-refresh every 6s while drafting"}
                 </label>
                 {lastPolledAt && <span className="text-[11px] text-muted">Last update {new Date(lastPolledAt).toLocaleTimeString()}</span>}
               </div>
