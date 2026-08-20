@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { ChevronDown } from "lucide-react";
-import type { LeagueSettings } from "@/lib/fantasy/types";
+import type { LeagueSettings, Position } from "@/lib/fantasy/types";
 import { cn } from "@/lib/utils";
 import { Card, FieldLabel, inputClass } from "./ui";
 
@@ -19,6 +19,13 @@ const ROSTER_SLOT_FIELDS: { key: keyof LeagueSettings["roster"]; label: string }
   { key: "FLEX", label: "FLEX (RB/WR/TE)" },
   { key: "SUPER_FLEX", label: "SUPERFLEX (QB/RB/WR/TE)" },
   { key: "BENCH", label: "Bench" },
+];
+
+const POSITION_CAP_FIELDS: { key: Position; label: string }[] = [
+  { key: "QB", label: "QB" },
+  { key: "RB", label: "RB" },
+  { key: "WR", label: "WR" },
+  { key: "TE", label: "TE" },
 ];
 
 const SCORING_FIELDS: { key: keyof LeagueSettings["scoring"]; label: string; step: number }[] = [
@@ -53,6 +60,14 @@ export function SettingsPanel({ league, onChange }: Props) {
   const setPoolRelevanceCutoff = (raw: string) => {
     const trimmed = raw.trim();
     onChange({ ...league, poolRelevanceCutoff: trimmed === "" ? null : Math.max(1, Number(trimmed)) });
+  };
+  const positionCaps = league.positionCaps ?? {};
+  const setPositionCap = (pos: Position, raw: string) => {
+    const trimmed = raw.trim();
+    const next = { ...positionCaps };
+    if (trimmed === "") delete next[pos];
+    else next[pos] = Math.max(0, Number(trimmed));
+    onChange({ ...league, positionCaps: next });
   };
 
   const isSuperflex = league.roster.SUPER_FLEX > 0;
@@ -147,6 +162,31 @@ export function SettingsPanel({ league, onChange }: Props) {
             <p className="mt-1 text-xs text-muted">
               Sleeper&rsquo;s full player list runs to a couple thousand names — most are practice-squad or deep-inactive
               players no redraft league will ever start. Clear the field to show every synced player instead.
+            </p>
+          </div>
+
+          <div>
+            <FieldLabel>Max roster spots per position (recommendations only)</FieldLabel>
+            <div className="mt-1.5 grid grid-cols-2 gap-3 sm:grid-cols-4">
+              {POSITION_CAP_FIELDS.map((f) => (
+                <div key={f.key}>
+                  <label className="text-xs text-muted">{f.label}</label>
+                  <input
+                    type="number"
+                    className={inputClass}
+                    value={positionCaps[f.key] ?? ""}
+                    placeholder="No cap"
+                    onChange={(e) => setPositionCap(f.key, e.target.value)}
+                    min={0}
+                  />
+                </div>
+              ))}
+            </div>
+            <p className="mt-1 text-xs text-muted">
+              Once you&rsquo;ve rostered this many at a position, the Recommended Pick list stops suggesting more there —
+              e.g. TE defaults to 2, since with one starting slot and how deep the position runs, a 3rd is never worth a
+              pick over a scarcer position. This only hides them from recommendations; the full table (and Mine/Taken)
+              still work normally. Clear a field for no cap.
             </p>
           </div>
         </div>
