@@ -219,9 +219,12 @@ export function WarRoom() {
       ),
       drafted: new Set(pickByPlayerId.keys()),
       // Preserve any manual "Mine" marks from outside this draft (e.g. a
-      // player added via CSV before syncing), on top of whatever the draft
-      // itself attributes to the given Sleeper user id.
-      myTeam: new Set([...prev.myTeam].filter((id) => pickByPlayerId.has(id)).concat([...myPlayerIds])),
+      // player added via CSV before syncing) — i.e. anyone this draft hasn't
+      // touched — on top of whatever the draft itself attributes to the
+      // given Sleeper user id. A player this draft shows as picked by
+      // someone else must NOT stay "Mine" just because it was true before
+      // sync; that's what the previous (inverted) filter got backwards.
+      myTeam: new Set([...prev.myTeam].filter((id) => !pickByPlayerId.has(id)).concat([...myPlayerIds])),
     }));
   }
 

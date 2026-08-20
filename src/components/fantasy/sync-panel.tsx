@@ -16,6 +16,7 @@ import {
   type SleeperDraftPick,
   type SleeperLeague,
 } from "@/lib/fantasy/sleeper";
+import { loadDraftSync, saveDraftSync } from "@/lib/fantasy/storage";
 import type { LeagueSettings, Player } from "@/lib/fantasy/types";
 import { Badge, buttonPrimaryClass, buttonSecondaryClass, Card, FieldLabel, inputClass } from "./ui";
 
@@ -47,6 +48,7 @@ export function SyncPanel({ syncedAt, playerCount, onPlayersSynced, onLeagueDete
   );
   const [autoRefresh, setAutoRefresh] = useState(true);
   const [lastPolledAt, setLastPolledAt] = useState<number | null>(null);
+  const [hydrated, setHydrated] = useState(false);
 
   async function syncPlayers() {
     setPlayerSyncState("loading");
@@ -167,6 +169,32 @@ export function SyncPanel({ syncedAt, playerCount, onPlayersSynced, onLeagueDete
     }
   }
 
+  // Resume whatever draft was connected before the last reload. Without
+  // this, the connection (and the interval below) lived only in this
+  // component's state — a refresh, tab close, or nav away mid-draft went
+  // quiet with no signal, and every pick made after that point needed a
+  // manual "Mine"/"Taken" click again even though a draft was "synced."
+  useEffect(() => {
+    const saved = loadDraftSync();
+    if (saved) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- hydrating from localStorage on mount, same pattern as war-room.tsx
+      setDraftInput(saved.draftId);
+      setMyUsername(saved.myUsername);
+      setAutoRefresh(saved.autoRefresh);
+      syncDraft(saved.draftId, saved.myUsername, { silent: true });
+    }
+    setHydrated(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Keep the connection (and the username/auto-refresh prefs) saved for as
+  // long as a draft is actually connected, so the effect above can resume it.
+  useEffect(() => {
+    if (!hydrated || !draftSummary) return;
+    saveDraftSync({ draftId: draftSummary.id, myUsername, autoRefresh });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [draftSummary?.id, myUsername, autoRefresh, hydrated]);
+
   // While a draft is actively in progress, poll picks automatically so Mine
   // /Taken status and the board update as the draft happens — no manual
   // "Refresh picks" clicks needed. Stops on its own once the draft
@@ -179,6 +207,12 @@ export function SyncPanel({ syncedAt, playerCount, onPlayersSynced, onLeagueDete
     return () => clearInterval(id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [draftSummary?.id, draftSummary?.status, autoRefresh, myUsername]);
+
+  function disconnectDraft() {
+    setDraftSummary(null);
+    setDraftSyncError(null);
+    saveDraftSync(null);
+  }
 
   return (
     <Card>
@@ -263,10 +297,12 @@ export function SyncPanel({ syncedAt, playerCount, onPlayersSynced, onLeagueDete
         <p className="text-xs text-muted">
           Paste the draft ID or the URL from a Sleeper mock (or a real league&rsquo;s in-progress draft). League
           settings (teams, roster slots, scoring) come straight from the draft itself — nothing to configure
-          separately. Every picked player is marked drafted and gets his pick number as ADP. Add your Sleeper
-          username and your own picks auto-tag as &ldquo;Mine&rdquo; for the My Team panel as they happen — while
-          the draft is live, this polls automatically every few seconds, so you don&rsquo;t have to click Mine or
-          Taken yourself.
+          separately. Every picked player is marked drafted and gets his pick number as ADP — the actual order this
+          draft picked him, more accurate than any generic ranking. Add your Sleeper username and your own picks
+          auto-tag as &ldquo;Mine&rdquo; for the My Team panel as they happen — while the draft is live, this polls
+          automatically every few seconds, so you don&rsquo;t have to click Mine or Taken yourself. The connection
+          survives a refresh or a closed tab too — reopening this page picks the same draft back up and resumes
+          polling on its own.
         </p>
         <div className="flex flex-wrap items-end gap-3">
           <div className="flex-1 min-w-[180px]">
@@ -307,13 +343,18 @@ export function SyncPanel({ syncedAt, playerCount, onPlayersSynced, onLeagueDete
                 Draft {draftSummary.id} &middot; {draftSummary.status} &middot; {draftSummary.pickCount} picks on the board
                 {draftSummary.myPickCount != null && ` · ${draftSummary.myPickCount} tagged as yours`}
               </p>
-              <button
-                type="button"
-                onClick={() => syncDraft(draftSummary.id, myUsername)}
-                className="shrink-0 text-xs font-medium text-accent hover:underline"
-              >
-                Refresh now
-              </button>
+              <span className="flex shrink-0 items-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => syncDraft(draftSummary.id, myUsername)}
+                  className="text-xs font-medium text-accent hover:underline"
+                >
+                  Refresh now
+                </button>
+                <button type="button" onClick={disconnectDraft} className="text-xs font-medium text-muted hover:underline">
+                  Stop syncing
+                </button>
+              </span>
             </div>
             {draftSummary.status === "drafting" && (
               <div className="flex items-center justify-between gap-2">

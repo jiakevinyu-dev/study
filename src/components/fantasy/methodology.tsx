@@ -44,7 +44,7 @@ const ITEMS = [
   {
     title: "Mock & live draft sync",
     body:
-      "Paste a Sleeper draft ID or mock-draft URL under Sleeper Sync: every player already picked is marked drafted and gets his pick number as ADP, so the board reflects that specific draft instead of a generic ranking. Hit Refresh picks as the draft progresses.",
+      "Paste a Sleeper draft ID or mock-draft URL under Sleeper Sync: every player already picked is marked drafted and gets his pick number as ADP — real, observed order from that specific draft, the most accurate ADP signal there is, well ahead of a generic ranking. Add your username and it polls on its own every few seconds while the draft is live, auto-tagging your picks as Mine and everyone else's as Taken — no manual clicking, and the connection survives a refresh so it keeps polling even if you close the tab and come back. Hit Refresh now if you want to force an update, or Stop syncing to disconnect.",
   },
   {
     title: "Bad data? Exclude it",

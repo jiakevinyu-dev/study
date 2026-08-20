@@ -20,6 +20,7 @@ const KEYS = {
   drafted: "ff-war-room:drafted",
   excluded: "ff-war-room:excluded",
   myTeam: "ff-war-room:my-team",
+  draftSync: "ff-war-room:draft-sync",
 } as const;
 
 function read<T>(key: string, fallback: T): T {
@@ -74,6 +75,21 @@ export const saveExcluded = (ids: string[]) => write(KEYS.excluded, ids);
 /** Players drafted onto *your* roster specifically — a subset of `drafted`. */
 export const loadMyTeam = () => read<string[]>(KEYS.myTeam, []);
 export const saveMyTeam = (ids: string[]) => write(KEYS.myTeam, ids);
+
+export type DraftSyncSettings = {
+  draftId: string;
+  myUsername: string;
+  autoRefresh: boolean;
+};
+
+/**
+ * Which mock/live draft (if any) is currently connected. Persisted so a page
+ * reload mid-draft resumes auto-polling on its own instead of silently going
+ * quiet — without this, "Mine"/"Taken" stop updating themselves the moment
+ * the tab refreshes, and it looks like the sync feature just doesn't work.
+ */
+export const loadDraftSync = () => read<DraftSyncSettings | null>(KEYS.draftSync, null);
+export const saveDraftSync = (settings: DraftSyncSettings | null) => write(KEYS.draftSync, settings);
 
 export function clearAllFantasyData() {
   if (typeof window === "undefined") return;
