@@ -17,7 +17,7 @@ import {
   type SleeperLeague,
 } from "@/lib/fantasy/sleeper";
 import { loadDraftSync, saveDraftSync } from "@/lib/fantasy/storage";
-import type { LeagueSettings, Player } from "@/lib/fantasy/types";
+import { DEFAULT_LEAGUE, type LeagueSettings, type Player } from "@/lib/fantasy/types";
 import { Badge, buttonPrimaryClass, buttonSecondaryClass, Card, FieldLabel, inputClass } from "./ui";
 
 type Props = {
@@ -106,6 +106,9 @@ export function SyncPanel({ syncedAt, playerCount, onPlayersSynced, onLeagueDete
           playoffWeeks: [15, 16, 17],
           leagueName: shape.leagueName,
           sleeperLeagueId: shape.sleeperLeagueId,
+          // war-room.tsx's handler preserves whatever the user already had
+          // set here — this default is just a type-satisfying placeholder.
+          poolRelevanceCutoff: DEFAULT_LEAGUE.poolRelevanceCutoff,
         },
         rosteredByPlayerId
       );
@@ -147,6 +150,9 @@ export function SyncPanel({ syncedAt, playerCount, onPlayersSynced, onLeagueDete
           roster: shape.roster,
           playoffWeeks: [15, 16, 17],
           leagueName: `Sleeper draft ${draft.draft_id} (${draft.status})`,
+          // war-room.tsx's handler preserves whatever the user already had
+          // set here — this default is just a type-satisfying placeholder.
+          poolRelevanceCutoff: DEFAULT_LEAGUE.poolRelevanceCutoff,
         },
         picks,
         myUserId

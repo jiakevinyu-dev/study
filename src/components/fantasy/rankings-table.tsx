@@ -106,9 +106,15 @@ export function RankingsTable({
   // is then just the candidate's own VBD — so it's a strict upgrade, not a
   // different feature.
   const myRoster = useMemo(() => rows.filter((r) => myTeam.has(r.id)), [rows, myTeam]);
-  const baseStartingVbd = useMemo(() => computeTeamStrength(myRoster, league).startingVbd, [myRoster, league]);
+  const myStrength = useMemo(() => computeTeamStrength(myRoster, league), [myRoster, league]);
+  const baseStartingVbd = myStrength.startingVbd;
 
   const recommended = useMemo(() => {
+    // Once every starting slot AND every bench slot is filled, there's
+    // nothing left to recommend — bench capacity is a real roster limit
+    // (league.roster.BENCH), not an afterthought the marginal-value math
+    // should keep grinding against forever.
+    if (myStrength.rosterFull) return null;
     let pool = rows.filter((r) => !drafted.has(r.id));
     if (posFilter !== "ALL") pool = pool.filter((r) => r.position === posFilter);
     if (pool.length === 0) return null;
@@ -134,7 +140,23 @@ export function RankingsTable({
     });
 
     return scored[0];
-  }, [rows, drafted, posFilter, myRoster, baseStartingVbd, league]);
+  }, [rows, drafted, posFilter, myRoster, baseStartingVbd, league, myStrength.rosterFull]);
+
+  // Value-over-replacement is deliberately blind to "I have zero players at
+  // a position I'm required to start" — that's a real gap pure VBD math
+  // under-weights: a dedicated slot with nobody in it scores 0, not
+  // whatever's left at that position, so a thin-but-positive remaining pool
+  // there can lose a marginal-value comparison to a good bench stash
+  // elsewhere even though punting the position is the bigger risk. This is
+  // surfaced as its own signal alongside the VBD-based recommendation
+  // (same pattern as Injury/SoS) rather than silently overriding it.
+  const zeroRosteredPositions = useMemo(
+    () =>
+      (["QB", "RB", "WR", "TE"] as const).filter(
+        (pos) => myStrength.openPositions.includes(pos) && myRoster.filter((r) => r.position === pos).length === 0
+      ),
+    [myStrength.openPositions, myRoster]
+  );
 
   const urgencyLabel = (r: WarRoomRow) =>
     r.tierSize <= 1
@@ -182,6 +204,22 @@ export function RankingsTable({
           them.
         </div>
       )}
+      {myStrength.rosterFull && (
+        <div className="rounded-2xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-xs text-emerald-800 dark:text-emerald-300 sm:px-5">
+          <span className="font-medium">Your roster is full</span> — {myStrength.totalSlots} starters and {myStrength.benchCapacity} bench
+          spots, all filled. Nothing left to recommend.
+        </div>
+      )}
+      {recommended && zeroRosteredPositions.length > 0 && !zeroRosteredPositions.includes(recommended.player.position) && (
+        <div className="rounded-2xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-xs text-amber-800 dark:text-amber-300 sm:px-5">
+          <span className="font-medium">
+            You have zero rostered {zeroRosteredPositions.join("/")} despite a required slot open there.
+          </span>{" "}
+          VBD-over-replacement doesn&rsquo;t know an empty required slot scores worse than any warm body — it just sees whatever&rsquo;s left
+          at {zeroRosteredPositions.join("/")} losing the marginal-value comparison below. Worth checking that tab yourself before trusting
+          this recommendation over it.
+        </div>
+      )}
       {recommended && (
         <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-accent/30 bg-accent-soft px-4 py-3 sm:px-5">
           <div>
@@ -209,7 +247,10 @@ export function RankingsTable({
                   </>
                 )
               ) : (
-                <>Your starters are already ahead of him here — he&rsquo;d be bench value, but still your best pick by raw VBD. </>
+                <>
+                  Your starters are already ahead of him here — he&rsquo;d be bench value ({myStrength.benchOpen} of {myStrength.benchCapacity}{" "}
+                  bench spot{myStrength.benchCapacity === 1 ? "" : "s"} still open), but still your best pick by raw VBD.{" "}
+                </>
               )}
               {recommended.player.tierSize <= 1 ? (
                 <>Alone in Tier {recommended.player.tier} at {recommended.player.position} — the next tier drops off, so don&rsquo;t wait on him.</>
