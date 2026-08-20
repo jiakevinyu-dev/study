@@ -4,7 +4,17 @@ import { computeTeamStrength } from "@/lib/fantasy/team-strength";
 import type { LeagueSettings, WarRoomRow } from "@/lib/fantasy/types";
 import { Badge, Card } from "./ui";
 
-export function MyTeamPanel({ rows, myTeam, league }: { rows: WarRoomRow[]; myTeam: Set<string>; league: LeagueSettings }) {
+export function MyTeamPanel({
+  rows,
+  myTeam,
+  drafted,
+  league,
+}: {
+  rows: WarRoomRow[];
+  myTeam: Set<string>;
+  drafted: Set<string>;
+  league: LeagueSettings;
+}) {
   const myRoster = rows.filter((r) => myTeam.has(r.id));
   const strength = computeTeamStrength(myRoster, league);
   const needs = [...new Set(strength.openPositions)];
@@ -20,8 +30,17 @@ export function MyTeamPanel({ rows, myTeam, league }: { rows: WarRoomRow[]; myTe
 
       {myRoster.length === 0 ? (
         <p className="mt-3 text-sm text-muted">
-          Hit <span className="font-medium text-fg">Mine</span> on players in the table as you draft them — this
-          fills in with your optimal starting lineup and total team strength, live.
+          {drafted.size >= 5 ? (
+            <>
+              {drafted.size} players are already off the board, but none are tagged as yours yet — add your Sleeper username under Sleeper
+              Sync so a synced draft auto-tags your picks, or hit <span className="font-medium text-fg">Mine</span> on them yourself.
+            </>
+          ) : (
+            <>
+              Hit <span className="font-medium text-fg">Mine</span> on players in the table as you draft them — this fills in with your
+              optimal starting lineup and total team strength, live.
+            </>
+          )}
         </p>
       ) : (
         <>
