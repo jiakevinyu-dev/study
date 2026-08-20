@@ -44,8 +44,35 @@ export function buildWarRoomBoard(
 
     const compositeValue = Math.round((p.vbd * injuryDiscount + sosAdjustment) * 10) / 10;
 
-    return { ...p, injury, sos, compositeValue };
+    return { ...p, injury, sos, compositeValue, vorpRank: null, marketRank: null, valueDelta: null };
   });
+
+  // Overall VORP rank (1 = best value-over-replacement in the whole pool,
+  // across positions) — this is "true value order" as this tool sees it.
+  [...rows]
+    .sort((a, b) => b.vbd - a.vbd)
+    .forEach((p, idx) => {
+      p.vorpRank = idx + 1;
+    });
+
+  // Market rank: real ADP if synced/imported, else Sleeper's search_rank as
+  // a proxy (Sleeper doesn't expose a true consensus-ADP endpoint). Ranked
+  // only among players who actually carry one of those signals, so a
+  // missing signal never masquerades as "rank 1".
+  [...rows]
+    .filter((p) => p.adp != null || p.searchRank != null)
+    .sort((a, b) => (a.adp ?? a.searchRank!) - (b.adp ?? b.searchRank!))
+    .forEach((p, idx) => {
+      p.marketRank = idx + 1;
+    });
+
+  // Value vs. ADP: positive means the market drafts him later than his
+  // value rank (a "wait" candidate — Derrick Henry-type value that falls),
+  // negative means the market drafts him earlier than his value rank (he
+  // won't last to his "true" spot if you're waiting on him).
+  for (const p of rows) {
+    p.valueDelta = p.marketRank != null && p.vorpRank != null ? p.marketRank - p.vorpRank : null;
+  }
 
   rows.sort((a, b) => b.compositeValue - a.compositeValue);
   return { rows, scarcity };

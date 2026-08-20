@@ -1,12 +1,12 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { ArrowUpDown, Ban, Check, Star, Undo2 } from "lucide-react";
+import { ArrowUpDown, Ban, Shirt, Star, Undo2, X } from "lucide-react";
 import type { Player, Position, WarRoomRow } from "@/lib/fantasy/types";
 import { cn } from "@/lib/utils";
 import { Badge } from "./ui";
 
-type SortKey = "composite" | "vbd" | "cliff" | "tier" | "points" | "adp" | "injury" | "sos";
+type SortKey = "composite" | "vbd" | "cliff" | "tier" | "points" | "adp" | "delta" | "injury" | "sos";
 
 const POSITION_FILTERS: ("ALL" | Position)[] = ["ALL", "QB", "RB", "WR", "TE"];
 
@@ -21,13 +21,27 @@ type Props = {
   rows: WarRoomRow[];
   watchlist: Set<string>;
   drafted: Set<string>;
+  myTeam: Set<string>;
   excludedPlayers: Player[];
   onToggleWatch: (id: string) => void;
-  onToggleDrafted: (id: string) => void;
+  onMarkMine: (id: string) => void;
+  onMarkTaken: (id: string) => void;
+  onUndoPick: (id: string) => void;
   onToggleExcluded: (id: string) => void;
 };
 
-export function RankingsTable({ rows, watchlist, drafted, excludedPlayers, onToggleWatch, onToggleDrafted, onToggleExcluded }: Props) {
+export function RankingsTable({
+  rows,
+  watchlist,
+  drafted,
+  myTeam,
+  excludedPlayers,
+  onToggleWatch,
+  onMarkMine,
+  onMarkTaken,
+  onUndoPick,
+  onToggleExcluded,
+}: Props) {
   const [search, setSearch] = useState("");
   const [posFilter, setPosFilter] = useState<"ALL" | Position>("ALL");
   // Default to pure value-over-replacement, not the risk-adjusted composite —
@@ -54,6 +68,8 @@ export function RankingsTable({ rows, watchlist, drafted, excludedPlayers, onTog
         return r.points;
       case "adp":
         return -(r.adp ?? r.searchRank ?? 9999);
+      case "delta":
+        return r.valueDelta ?? -9999;
       case "injury":
         return r.injury.score;
       case "sos":
@@ -107,6 +123,12 @@ export function RankingsTable({ rows, watchlist, drafted, excludedPlayers, onTog
         "Gap-detected value tier at this position, not a fixed top-N split. A lonely tier (size 1) means passing on him costs real value — a big tier means plenty of similar options remain, so it's safe to draft elsewhere and come back.",
     },
     { key: "adp", label: "ADP" },
+    {
+      key: "delta",
+      label: "Value vs ADP",
+      title:
+        "Where he's valued (rank by VBD) minus where the market drafts him (rank by ADP/search_rank). Positive = he typically falls past his true value, so you can wait on him. Negative = the market takes him earlier than his value rank, so he likely won't last if you wait.",
+    },
     { key: "injury", label: "Injury" },
     { key: "sos", label: "SoS (Playoffs)" },
     { key: "composite", label: "Composite", title: "VBD adjusted for injury risk and playoff-week SoS" },
@@ -140,8 +162,8 @@ export function RankingsTable({ rows, watchlist, drafted, excludedPlayers, onTog
               )}
             </p>
           </div>
-          <button type="button" onClick={() => onToggleDrafted(bestAvailable.id)} className="shrink-0 text-xs font-medium text-accent hover:underline">
-            Mark drafted
+          <button type="button" onClick={() => onMarkMine(bestAvailable.id)} className="shrink-0 text-xs font-medium text-accent hover:underline">
+            Draft him
           </button>
         </div>
       )}
@@ -180,7 +202,7 @@ export function RankingsTable({ rows, watchlist, drafted, excludedPlayers, onTog
         </div>
 
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[1040px] text-left text-sm">
+          <table className="w-full min-w-[1180px] text-left text-sm">
             <thead>
               <tr className="border-b border-border text-xs uppercase tracking-wide text-muted">
                 <th className="w-10 px-3 py-2.5" />
@@ -199,13 +221,16 @@ export function RankingsTable({ rows, watchlist, drafted, excludedPlayers, onTog
             </thead>
             <tbody>
               {filtered.map((r, idx) => {
+                const isMine = myTeam.has(r.id);
                 const isDrafted = drafted.has(r.id);
+                const isTakenByOther = isDrafted && !isMine;
                 return (
                   <tr
                     key={r.id}
                     className={cn(
                       "border-b border-border/60 transition-colors hover:bg-bg-inset",
-                      isDrafted && "opacity-40"
+                      isTakenByOther && "opacity-40",
+                      isMine && "bg-accent-soft/40"
                     )}
                   >
                     <td className="px-3 py-2.5">
@@ -222,7 +247,9 @@ export function RankingsTable({ rows, watchlist, drafted, excludedPlayers, onTog
                       <div className="flex items-center gap-2">
                         <span className="w-5 shrink-0 font-mono text-[11px] text-muted">{idx + 1}</span>
                         <div>
-                          <p className="font-medium text-fg">{r.name}</p>
+                          <p className="font-medium text-fg">
+                            {r.name} {isMine && <Badge tone="accent">Mine</Badge>}
+                          </p>
                           <p className="text-[11px] text-muted">
                             {r.team ?? "FA"}
                             {r.rosteredBy && ` · ${r.rosteredBy}`}
@@ -245,6 +272,16 @@ export function RankingsTable({ rows, watchlist, drafted, excludedPlayers, onTog
                       </Badge>
                     </td>
                     <td className="px-3 py-2.5 font-mono text-xs text-muted">{r.adp ?? r.searchRank ?? "—"}</td>
+                    <td className="px-3 py-2.5 font-mono text-xs">
+                      {r.valueDelta != null ? (
+                        <span className={r.valueDelta > 0 ? "text-emerald-700 dark:text-emerald-400" : r.valueDelta < 0 ? "text-red-600 dark:text-red-400" : "text-muted"}>
+                          {r.valueDelta > 0 ? "+" : ""}
+                          {r.valueDelta}
+                        </span>
+                      ) : (
+                        <span className="text-muted">—</span>
+                      )}
+                    </td>
                     <td className="px-3 py-2.5" title={r.injury.factors.join("\n")}>
                       <Badge tone={INJURY_TONE[r.injury.tier]}>
                         {r.injury.tier} · {r.injury.score}
@@ -262,24 +299,36 @@ export function RankingsTable({ rows, watchlist, drafted, excludedPlayers, onTog
                     <td className="px-3 py-2.5 font-mono text-sm text-fg">{r.compositeValue.toFixed(1)}</td>
                     <td className="px-3 py-2.5">
                       <div className="flex items-center justify-end gap-1.5">
-                        <button
-                          type="button"
-                          onClick={() => onToggleDrafted(r.id)}
-                          className={cn(
-                            "inline-flex h-7 items-center gap-1 rounded-full border px-2.5 text-[11px] font-medium transition-colors",
-                            isDrafted ? "border-border text-muted hover:text-fg" : "border-border text-fg hover:border-border-strong"
-                          )}
-                        >
-                          {isDrafted ? (
-                            <>
-                              <Undo2 className="h-3 w-3" aria-hidden="true" /> Undo
-                            </>
-                          ) : (
-                            <>
-                              <Check className="h-3 w-3" aria-hidden="true" /> Draft
-                            </>
-                          )}
-                        </button>
+                        {isDrafted ? (
+                          <button
+                            type="button"
+                            onClick={() => onUndoPick(r.id)}
+                            className="inline-flex h-7 items-center gap-1 rounded-full border border-border px-2.5 text-[11px] font-medium text-muted transition-colors hover:text-fg"
+                          >
+                            <Undo2 className="h-3 w-3" aria-hidden="true" /> Undo
+                          </button>
+                        ) : (
+                          <>
+                            <button
+                              type="button"
+                              onClick={() => onMarkMine(r.id)}
+                              title="Draft to my team"
+                              aria-label={`Mark ${r.name} as mine`}
+                              className="inline-flex h-7 items-center gap-1 rounded-full border border-border px-2.5 text-[11px] font-medium text-fg transition-colors hover:border-accent hover:text-accent"
+                            >
+                              <Shirt className="h-3 w-3" aria-hidden="true" /> Mine
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => onMarkTaken(r.id)}
+                              title="Someone else drafted him"
+                              aria-label={`Mark ${r.name} as taken`}
+                              className="inline-flex h-7 items-center gap-1 rounded-full border border-border px-2.5 text-[11px] font-medium text-muted transition-colors hover:text-fg"
+                            >
+                              <X className="h-3 w-3" aria-hidden="true" /> Taken
+                            </button>
+                          </>
+                        )}
                         <button
                           type="button"
                           onClick={() => onToggleExcluded(r.id)}
@@ -296,7 +345,7 @@ export function RankingsTable({ rows, watchlist, drafted, excludedPlayers, onTog
               })}
               {filtered.length === 0 && (
                 <tr>
-                  <td colSpan={13} className="px-3 py-10 text-center text-sm text-muted">
+                  <td colSpan={14} className="px-3 py-10 text-center text-sm text-muted">
                     No players match. Sync Sleeper or import a CSV from Data Sources above.
                   </td>
                 </tr>

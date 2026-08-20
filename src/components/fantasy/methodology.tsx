@@ -17,6 +17,16 @@ const ITEMS = [
       "VBD only compares a player to the worst startable player at his position — it doesn't say whether there's a near-twin of him sitting three picks later. Tiers do: at each position, players are clustered by real gaps in the value curve (a gap only starts a new tier once it's at least 12% of that position's VBD range), so a top-heavy position naturally gets a lonely Tier 1 and a big Tier 2, while a position that declines evenly gets many small tiers. Worked example: a locked-in TE1 sitting alone in Tier 1 with six comparable TEs bunched in Tier 2 a few points back shows up as 'T1 · 1 deep' — spending an early pick there costs you a scarcer position's Tier 1 for a TE edge you could've had two rounds later. The Tier column and the chart's bar gaps show this at every position; the Best Available banner calls out the tier context for whoever's on top.",
   },
   {
+    title: "Value vs ADP — who you can wait on",
+    body:
+      "Two overall ranks, compared: vorpRank (where a player ranks by VBD, across all positions) and marketRank (where the market actually drafts him — real ADP if you've imported it, otherwise Sleeper's search_rank; Sleeper doesn't expose a true consensus-ADP endpoint, so search_rank is the closest live signal available). Value vs ADP = marketRank − vorpRank. A big positive number means he's typically gone well after his true value rank — the Derrick-Henry pattern: elite value, but the market lets him fall, so you can prioritize a scarcer position now and still get him later. A negative number means the market drafts him ahead of his value rank — he won't last if you're counting on grabbing him late, so either take him now or plan around not getting him. For the most defensible comparison, import real ADP (Underdog/FantasyPros/your own draft's pick order via Sleeper draft sync) rather than relying on search_rank alone.",
+  },
+  {
+    title: "My Team & Team Strength",
+    body:
+      "Hit Mine on a player to add him to your roster; Taken marks him off the board without claiming him. The My Team panel then runs the same slot-filling logic as the league-wide scarcity simulation — dedicated slot, then FLEX, then SUPERFLEX — scoped to just your own roster, to find your value-maximizing starting lineup and its total projected points and VBD. That's what turns 'draft the best player available' into 'draft the player who most improves my actual lineup': two RBs you've already started don't need a third at the value an empty TE slot would unlock. Syncing a Sleeper draft with your username auto-tags your own picks as Mine; otherwise just click it yourself as you draft.",
+  },
+  {
     title: "Injury risk",
     body:
       "A transparent 0-100 heuristic, not a medical prediction: current Sleeper injury designation, a position/age decline curve, a position base rate for workload and contact exposure, and — if imported — recent games missed. Hover any Injury badge to see exactly which factors contributed.",

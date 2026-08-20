@@ -19,6 +19,7 @@ const KEYS = {
   watchlist: "ff-war-room:watchlist",
   drafted: "ff-war-room:drafted",
   excluded: "ff-war-room:excluded",
+  myTeam: "ff-war-room:my-team",
 } as const;
 
 function read<T>(key: string, fallback: T): T {
@@ -69,6 +70,10 @@ export const saveDrafted = (ids: string[]) => write(KEYS.drafted, ids);
 /** Players manually excluded from the board — e.g. stale/retired entries that slipped through a sync. */
 export const loadExcluded = () => read<string[]>(KEYS.excluded, []);
 export const saveExcluded = (ids: string[]) => write(KEYS.excluded, ids);
+
+/** Players drafted onto *your* roster specifically — a subset of `drafted`. */
+export const loadMyTeam = () => read<string[]>(KEYS.myTeam, []);
+export const saveMyTeam = (ids: string[]) => write(KEYS.myTeam, ids);
 
 export function clearAllFantasyData() {
   if (typeof window === "undefined") return;

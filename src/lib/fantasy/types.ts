@@ -198,4 +198,29 @@ export type WarRoomRow = ValuedPlayer & {
   injury: InjuryRisk;
   sos: SosResult;
   compositeValue: number;
+  /** Overall rank by VBD (1 = best value in the whole pool). Null only if the pool is empty. */
+  vorpRank: number | null;
+  /** Overall rank by market signal — ADP if imported/synced, else Sleeper's search_rank. Null if neither exists. */
+  marketRank: number | null;
+  /** marketRank - vorpRank. Positive = market drafts him later than his value ("can wait"). Negative = market drafts him earlier ("won't last"/reach). Null if marketRank is null. */
+  valueDelta: number | null;
+};
+
+/** One slot instance in a team's starting lineup, filled or empty. */
+export type TeamSlotAssignment = {
+  slot: SlotType;
+  player: WarRoomRow | null;
+};
+
+export type TeamStrength = {
+  assignments: TeamSlotAssignment[];
+  /** Sum of projected points across all filled starting slots. */
+  startingPoints: number;
+  /** Sum of VBD across all filled starting slots — value added over a replacement-level team. */
+  startingVbd: number;
+  bench: WarRoomRow[];
+  filledSlots: number;
+  totalSlots: number;
+  /** Position(s) still needed to fill an empty dedicated/flex-eligible slot, most-empty first. */
+  openPositions: Position[];
 };

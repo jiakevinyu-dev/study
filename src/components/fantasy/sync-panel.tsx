@@ -24,7 +24,7 @@ type Props = {
   playerCount: number;
   onPlayersSynced: (players: Player[]) => void;
   onLeagueDetected: (league: LeagueSettings, rosteredByPlayerId: Map<string, string>) => void;
-  onDraftSynced: (league: LeagueSettings, picks: SleeperDraftPick[]) => void;
+  onDraftSynced: (league: LeagueSettings, picks: SleeperDraftPick[], myUserId?: string) => void;
 };
 
 export function SyncPanel({ syncedAt, playerCount, onPlayersSynced, onLeagueDetected, onDraftSynced }: Props) {
@@ -39,9 +39,12 @@ export function SyncPanel({ syncedAt, playerCount, onPlayersSynced, onLeagueDete
   const [appliedLeagueName, setAppliedLeagueName] = useState<string | null>(null);
 
   const [draftInput, setDraftInput] = useState("");
+  const [myUsername, setMyUsername] = useState("");
   const [draftSyncState, setDraftSyncState] = useState<"idle" | "loading" | "error">("idle");
   const [draftSyncError, setDraftSyncError] = useState<string | null>(null);
-  const [draftSummary, setDraftSummary] = useState<{ id: string; status: string; pickCount: number } | null>(null);
+  const [draftSummary, setDraftSummary] = useState<{ id: string; status: string; pickCount: number; myPickCount: number | null } | null>(
+    null
+  );
 
   async function syncPlayers() {
     setPlayerSyncState("loading");
@@ -110,13 +113,23 @@ export function SyncPanel({ syncedAt, playerCount, onPlayersSynced, onLeagueDete
     }
   }
 
-  async function syncDraft(input: string) {
+  async function syncDraft(input: string, myUsernameInput: string) {
     setDraftSyncState("loading");
     setDraftSyncError(null);
     try {
       const draft = await fetchSleeperDraft(input);
       const picks = await fetchSleeperDraftPicks(input);
       const shape = detectDraftShape(draft);
+
+      let myUserId: string | undefined;
+      if (myUsernameInput.trim()) {
+        try {
+          myUserId = (await fetchSleeperUser(myUsernameInput)).user_id;
+        } catch {
+          // Non-fatal — the draft still syncs, it just can't auto-tag "Mine" picks.
+          setDraftSyncError(`Synced the draft, but couldn't find Sleeper user "${myUsernameInput}" to tag your picks.`);
+        }
+      }
 
       onDraftSynced(
         {
@@ -126,9 +139,15 @@ export function SyncPanel({ syncedAt, playerCount, onPlayersSynced, onLeagueDete
           playoffWeeks: [15, 16, 17],
           leagueName: `Sleeper draft ${draft.draft_id} (${draft.status})`,
         },
-        picks
+        picks,
+        myUserId
       );
-      setDraftSummary({ id: draft.draft_id, status: draft.status, pickCount: picks.filter((p) => p.player_id).length });
+      setDraftSummary({
+        id: draft.draft_id,
+        status: draft.status,
+        pickCount: picks.filter((p) => p.player_id).length,
+        myPickCount: myUserId ? picks.filter((p) => p.player_id && p.picked_by === myUserId).length : null,
+      });
       setDraftSyncState("idle");
     } catch (err) {
       setDraftSyncState("error");
@@ -219,7 +238,8 @@ export function SyncPanel({ syncedAt, playerCount, onPlayersSynced, onLeagueDete
         <p className="text-xs text-muted">
           Paste the draft ID or the URL from a Sleeper mock (or a real league&rsquo;s in-progress draft). Every
           picked player is marked drafted and gets his pick number as ADP, so the board reflects what actually
-          happened in that draft.
+          happened in that draft. Add your Sleeper username to auto-tag your own picks as &ldquo;Mine&rdquo; for the
+          My Team panel — otherwise just click Mine on your picks as you make them.
         </p>
         <div className="flex flex-wrap items-end gap-3">
           <div className="flex-1 min-w-[180px]">
@@ -230,9 +250,17 @@ export function SyncPanel({ syncedAt, playerCount, onPlayersSynced, onLeagueDete
               onChange={(e) => setDraftInput(e.target.value)}
             />
           </div>
+          <div className="flex-1 min-w-[160px]">
+            <input
+              className={inputClass}
+              placeholder="Your username (optional)"
+              value={myUsername}
+              onChange={(e) => setMyUsername(e.target.value)}
+            />
+          </div>
           <button
             type="button"
-            onClick={() => syncDraft(draftInput)}
+            onClick={() => syncDraft(draftInput, myUsername)}
             disabled={!draftInput || draftSyncState === "loading"}
             className={buttonSecondaryClass}
           >
@@ -242,16 +270,22 @@ export function SyncPanel({ syncedAt, playerCount, onPlayersSynced, onLeagueDete
         </div>
 
         {draftSyncState === "error" && <p className="text-xs text-red-600 dark:text-red-400">{draftSyncError}</p>}
-        {draftSummary && draftSyncState === "idle" && !draftSyncError && (
+        {draftSummary && (
           <div className="flex items-center justify-between gap-2 rounded-lg bg-bg-inset px-3 py-2">
             <p className="text-xs text-emerald-700 dark:text-emerald-400">
               Draft {draftSummary.id} &middot; {draftSummary.status} &middot; {draftSummary.pickCount} picks on the board
+              {draftSummary.myPickCount != null && ` · ${draftSummary.myPickCount} tagged as yours`}
             </p>
-            <button type="button" onClick={() => syncDraft(draftSummary.id)} className="shrink-0 text-xs font-medium text-accent hover:underline">
+            <button
+              type="button"
+              onClick={() => syncDraft(draftSummary.id, myUsername)}
+              className="shrink-0 text-xs font-medium text-accent hover:underline"
+            >
               Refresh picks
             </button>
           </div>
         )}
+        {draftSyncState !== "error" && draftSyncError && <p className="text-xs text-amber-700 dark:text-amber-400">{draftSyncError}</p>}
       </div>
     </Card>
   );
