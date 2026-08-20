@@ -57,6 +57,6 @@ export const EXAMPLE_PLAYERS: ImportedPlayerRow[] = [
   row("Example TE2", "TE", "EX2", { rec: 62, recYd: 720, recTd: 5 }, 10),
   row("Example TE3", "TE", "EX3", { rec: 60, recYd: 700, recTd: 5 }, 34),
   row("Example TE4", "TE", "EX4", { rec: 58, recYd: 680, recTd: 5 }, 36),
-  row("Example TE5", "TE", "EX5", { rec: 56, recYd: 660, recTd: 4 }, 40),
-  row("Example TE6", "TE", "EX6", { rec: 54, recYd: 640, recTd: 4 }, 42),
+  row("Example TE5", "TE", "EX5", { rec: 56, recYd: 660, recTd: 5 }, 40),
+  row("Example TE6", "TE", "EX6", { rec: 54, recYd: 640, recTd: 5 }, 42),
 ];
