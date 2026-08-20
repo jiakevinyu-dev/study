@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { Menu, X } from "lucide-react";
 import { nav, site } from "@/lib/data";
 import { ThemeToggle } from "@/components/theme-toggle";
@@ -35,25 +36,25 @@ export function SiteHeader() {
       )}
     >
       <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-5 sm:px-8">
-        <a
-          href="#top"
+        <Link
+          href="/#top"
           className="font-display text-lg font-semibold tracking-tight text-fg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-sm"
         >
           {site.initials}
           <span className="ml-1 hidden font-sans text-sm font-medium text-muted sm:inline">
             / {site.shortName}
           </span>
-        </a>
+        </Link>
 
         <nav className="hidden items-center gap-8 md:flex" aria-label="Primary">
           {nav.map((item) => (
-            <a
+            <Link
               key={item.href}
               href={item.href}
               className="text-sm font-medium text-muted transition-colors hover:text-fg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-sm"
             >
               {item.label}
-            </a>
+            </Link>
           ))}
         </nav>
 
@@ -96,14 +97,14 @@ export function SiteHeader() {
         <div className="border-t border-border bg-bg px-5 pb-6 pt-2 md:hidden">
           <nav className="flex flex-col" aria-label="Mobile">
             {nav.map((item) => (
-              <a
+              <Link
                 key={item.href}
                 href={item.href}
                 onClick={() => setOpen(false)}
                 className="border-b border-border py-4 text-base font-medium text-fg last:border-none"
               >
                 {item.label}
-              </a>
+              </Link>
             ))}
           </nav>
           <div className="mt-4 flex items-center gap-5">
