@@ -2,7 +2,8 @@
 
 import { useMemo, useState } from "react";
 import { ArrowUpDown, Ban, Shirt, Star, Undo2, X } from "lucide-react";
-import type { Player, Position, WarRoomRow } from "@/lib/fantasy/types";
+import { computeTeamStrength } from "@/lib/fantasy/team-strength";
+import type { LeagueSettings, Player, Position, WarRoomRow } from "@/lib/fantasy/types";
 import { cn } from "@/lib/utils";
 import { Badge } from "./ui";
 
@@ -22,6 +23,7 @@ type Props = {
   watchlist: Set<string>;
   drafted: Set<string>;
   myTeam: Set<string>;
+  league: LeagueSettings;
   excludedPlayers: Player[];
   onToggleWatch: (id: string) => void;
   onMarkMine: (id: string) => void;
@@ -35,6 +37,7 @@ export function RankingsTable({
   watchlist,
   drafted,
   myTeam,
+  league,
   excludedPlayers,
   onToggleWatch,
   onMarkMine,
@@ -89,14 +92,49 @@ export function RankingsTable({
     return [...out].sort((a, b) => (sortValue(a, sortKey) - sortValue(b, sortKey)) * sortDir);
   }, [rows, posFilter, hideDrafted, watchOnly, search, sortKey, sortDir, drafted, watchlist]);
 
-  // Best-available-by-VBD is always computed independent of the visible
+  // The recommendation is always computed independent of the visible
   // sort/filter (position filter aside) so the banner is a stable draft
   // recommendation, not just "whatever's on top of the table right now."
-  const bestAvailable = useMemo(() => {
+  //
+  // It's team-aware, not just "highest VBD available": for each undrafted
+  // candidate, run the same starting-lineup simulation the My Team panel
+  // uses on (my current roster + candidate) and see how much it actually
+  // raises my starting VBD. A great QB when SUPERFLEX and QB are both
+  // already started is worth ~0 marginal value; an ordinary TE filling an
+  // empty TE slot can outrank him. When the roster is empty this reduces
+  // to exactly the old "best VBD available" behavior, since marginal value
+  // is then just the candidate's own VBD — so it's a strict upgrade, not a
+  // different feature.
+  const myRoster = useMemo(() => rows.filter((r) => myTeam.has(r.id)), [rows, myTeam]);
+  const baseStartingVbd = useMemo(() => computeTeamStrength(myRoster, league).startingVbd, [myRoster, league]);
+
+  const recommended = useMemo(() => {
     let pool = rows.filter((r) => !drafted.has(r.id));
     if (posFilter !== "ALL") pool = pool.filter((r) => r.position === posFilter);
-    return [...pool].sort((a, b) => b.vbd - a.vbd)[0] ?? null;
-  }, [rows, drafted, posFilter]);
+    if (pool.length === 0) return null;
+
+    const scored = pool.map((player) => {
+      const marginal =
+        Math.round((computeTeamStrength([...myRoster, player], league).startingVbd - baseStartingVbd) * 10) / 10;
+      return { player, marginal };
+    });
+
+    scored.sort((a, b) => {
+      // Primary: whoever raises my actual starting lineup the most.
+      if (b.marginal !== a.marginal) return b.marginal - a.marginal;
+      // Tie-break 1: urgency — a thinner tier means less chance he's still
+      // there next round, so he's worth taking over an equally-valuable
+      // player in a deep tier you can circle back for.
+      if (a.player.tier !== b.player.tier) return a.player.tier - b.player.tier;
+      if (a.player.tierSize !== b.player.tierSize) return a.player.tierSize - b.player.tierSize;
+      // Tie-break 2 (mainly once a lineup's starters are all full and
+      // marginal value bottoms out at 0 for most candidates): fall back to
+      // raw value, so bench-round recommendations still make sense.
+      return b.player.vbd - a.player.vbd;
+    });
+
+    return scored[0];
+  }, [rows, drafted, posFilter, myRoster, baseStartingVbd, league]);
 
   const urgencyLabel = (r: WarRoomRow) =>
     r.tierSize <= 1
@@ -136,33 +174,52 @@ export function RankingsTable({
 
   return (
     <div className="space-y-3">
-      {bestAvailable && (
+      {recommended && (
         <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-accent/30 bg-accent-soft px-4 py-3 sm:px-5">
           <div>
             <p className="font-mono text-[10px] uppercase tracking-wide text-accent">
-              Best available by VBD{posFilter !== "ALL" ? ` · ${posFilter}` : ""}
+              Recommended pick{posFilter !== "ALL" ? ` · ${posFilter}` : ""}
             </p>
             <p className="mt-0.5 text-sm font-medium text-fg">
-              {bestAvailable.name} <span className="text-muted">({bestAvailable.position})</span> — {bestAvailable.vbd.toFixed(1)} pts over
-              replacement
-              {bestAvailable.cliff > 0 && (
-                <span className="text-muted"> · {bestAvailable.cliff.toFixed(1)} pts more than the next-best {bestAvailable.position}</span>
+              {recommended.player.name} <span className="text-muted">({recommended.player.position})</span> —{" "}
+              {recommended.marginal > 0 ? (
+                <>+{recommended.marginal.toFixed(1)} pts to your starting lineup</>
+              ) : (
+                <>{recommended.player.vbd.toFixed(1)} pts over replacement</>
               )}
             </p>
             <p className="mt-1 text-xs text-muted">
-              {bestAvailable.tierSize <= 1 ? (
-                <>
-                  Alone in Tier {bestAvailable.tier} at {bestAvailable.position} — the next tier drops off, so this value doesn&rsquo;t come back.
-                </>
+              {recommended.marginal > 0 ? (
+                myRoster.length > 0 ? (
+                  <>Your best available upgrade — raises your projected starting VBD from {baseStartingVbd.toFixed(1)} to {(baseStartingVbd + recommended.marginal).toFixed(1)}. </>
+                ) : (
+                  <>Nothing drafted yet, so this is simply the top value on the board. </>
+                )
+              ) : (
+                <>Your starters are already ahead of him here — he&rsquo;d be bench value, but still your best pick by raw VBD. </>
+              )}
+              {recommended.player.tierSize <= 1 ? (
+                <>Alone in Tier {recommended.player.tier} at {recommended.player.position} — the next tier drops off, so don&rsquo;t wait on him.</>
               ) : (
                 <>
-                  Tier {bestAvailable.tier} of {bestAvailable.tierSize} similar {bestAvailable.position}s — {bestAvailable.tierSize - 1} more
-                  within reach of this value, so it&rsquo;s safe to take a scarcer position now and circle back.
+                  Tier {recommended.player.tier} of {recommended.player.tierSize} similar {recommended.player.position}s — {recommended.player.tierSize - 1} more
+                  within reach of this value.
+                </>
+              )}
+              {recommended.player.valueDelta != null && recommended.player.valueDelta > 0 && (
+                <>
+                  {" "}
+                  He&rsquo;s also going at ADP {recommended.player.adp ?? recommended.player.searchRank ?? "—"} while ranking #{recommended.player.vorpRank}{" "}
+                  by value — a {recommended.player.valueDelta}-spot discount versus the market.
                 </>
               )}
             </p>
           </div>
-          <button type="button" onClick={() => onMarkMine(bestAvailable.id)} className="shrink-0 text-xs font-medium text-accent hover:underline">
+          <button
+            type="button"
+            onClick={() => onMarkMine(recommended.player.id)}
+            className="shrink-0 text-xs font-medium text-accent hover:underline"
+          >
             Draft him
           </button>
         </div>
