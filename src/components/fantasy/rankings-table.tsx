@@ -2,6 +2,9 @@
 
 import { useMemo, useState } from "react";
 import { ArrowUpDown, Ban, Shirt, Star, Undo2, X } from "lucide-react";
+import { SURVIVAL_LABEL } from "@/lib/fantasy/draft-context";
+import { DEFAULT_SCARCITY_WEIGHT, getRecommendations, type Recommendation } from "@/lib/fantasy/recommend";
+import type { DraftPosition } from "@/lib/fantasy/storage";
 import { computeTeamStrength } from "@/lib/fantasy/team-strength";
 import type { LeagueSettings, Player, Position, WarRoomRow } from "@/lib/fantasy/types";
 import { cn } from "@/lib/utils";
@@ -24,6 +27,7 @@ type Props = {
   drafted: Set<string>;
   myTeam: Set<string>;
   league: LeagueSettings;
+  draftPosition: DraftPosition | null;
   excludedPlayers: Player[];
   onToggleWatch: (id: string) => void;
   onMarkMine: (id: string) => void;
@@ -38,6 +42,7 @@ export function RankingsTable({
   drafted,
   myTeam,
   league,
+  draftPosition,
   excludedPlayers,
   onToggleWatch,
   onMarkMine,
@@ -53,6 +58,7 @@ export function RankingsTable({
   const [sortDir, setSortDir] = useState<1 | -1>(-1);
   const [hideDrafted, setHideDrafted] = useState(true);
   const [watchOnly, setWatchOnly] = useState(false);
+  const [scarcityWeight, setScarcityWeight] = useState(DEFAULT_SCARCITY_WEIGHT);
 
   function sortValue(r: WarRoomRow, key: SortKey) {
     switch (key) {
@@ -92,55 +98,37 @@ export function RankingsTable({
     return [...out].sort((a, b) => (sortValue(a, sortKey) - sortValue(b, sortKey)) * sortDir);
   }, [rows, posFilter, hideDrafted, watchOnly, search, sortKey, sortDir, drafted, watchlist]);
 
-  // The recommendation is always computed independent of the visible
-  // sort/filter (position filter aside) so the banner is a stable draft
+  // The recommendation list is always computed independent of the visible
+  // sort/filter (position filter aside) so it's a stable draft
   // recommendation, not just "whatever's on top of the table right now."
-  //
-  // It's team-aware, not just "highest VBD available": for each undrafted
-  // candidate, run the same starting-lineup simulation the My Team panel
-  // uses on (my current roster + candidate) and see how much it actually
-  // raises my starting VBD. A great QB when SUPERFLEX and QB are both
-  // already started is worth ~0 marginal value; an ordinary TE filling an
-  // empty TE slot can outrank him. When the roster is empty this reduces
-  // to exactly the old "best VBD available" behavior, since marginal value
-  // is then just the candidate's own VBD — so it's a strict upgrade, not a
-  // different feature.
+  // See recommend.ts for the full method — team-aware marginal value,
+  // combined with a snake-order-and-ADP-aware scarcity drop-off when a
+  // draft's been synced with a resolved draft slot.
   const myRoster = useMemo(() => rows.filter((r) => myTeam.has(r.id)), [rows, myTeam]);
   const myStrength = useMemo(() => computeTeamStrength(myRoster, league), [myRoster, league]);
   const baseStartingVbd = myStrength.startingVbd;
 
-  const recommended = useMemo(() => {
+  const draftPositionContext = useMemo(
+    () =>
+      draftPosition?.myDraftSlot != null
+        ? { teams: league.teams, myDraftSlot: draftPosition.myDraftSlot, nextPickNo: draftPosition.pickCount + 1 }
+        : null,
+    [draftPosition, league.teams]
+  );
+
+  const recommendations = useMemo(() => {
     // Once every starting slot AND every bench slot is filled, there's
     // nothing left to recommend — bench capacity is a real roster limit
     // (league.roster.BENCH), not an afterthought the marginal-value math
     // should keep grinding against forever.
-    if (myStrength.rosterFull) return null;
+    if (myStrength.rosterFull) return [];
     let pool = rows.filter((r) => !drafted.has(r.id));
     if (posFilter !== "ALL") pool = pool.filter((r) => r.position === posFilter);
-    if (pool.length === 0) return null;
+    if (pool.length === 0) return [];
+    return getRecommendations(pool, myRoster, league, { limit: 5, scarcityWeight, draftPosition: draftPositionContext });
+  }, [rows, drafted, posFilter, myRoster, league, myStrength.rosterFull, scarcityWeight, draftPositionContext]);
 
-    const scored = pool.map((player) => {
-      const marginal =
-        Math.round((computeTeamStrength([...myRoster, player], league).startingVbd - baseStartingVbd) * 10) / 10;
-      return { player, marginal };
-    });
-
-    scored.sort((a, b) => {
-      // Primary: whoever raises my actual starting lineup the most.
-      if (b.marginal !== a.marginal) return b.marginal - a.marginal;
-      // Tie-break 1: urgency — a thinner tier means less chance he's still
-      // there next round, so he's worth taking over an equally-valuable
-      // player in a deep tier you can circle back for.
-      if (a.player.tier !== b.player.tier) return a.player.tier - b.player.tier;
-      if (a.player.tierSize !== b.player.tierSize) return a.player.tierSize - b.player.tierSize;
-      // Tie-break 2 (mainly once a lineup's starters are all full and
-      // marginal value bottoms out at 0 for most candidates): fall back to
-      // raw value, so bench-round recommendations still make sense.
-      return b.player.vbd - a.player.vbd;
-    });
-
-    return scored[0];
-  }, [rows, drafted, posFilter, myRoster, baseStartingVbd, league, myStrength.rosterFull]);
+  const recommended: Recommendation | null = recommendations[0] ?? null;
 
   // Value-over-replacement is deliberately blind to "I have zero players at
   // a position I'm required to start" — that's a real gap pure VBD math
@@ -221,61 +209,114 @@ export function RankingsTable({
         </div>
       )}
       {recommended && (
-        <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-accent/30 bg-accent-soft px-4 py-3 sm:px-5">
-          <div>
-            <p className="font-mono text-[10px] uppercase tracking-wide text-accent">
-              Recommended pick{posFilter !== "ALL" ? ` · ${posFilter}` : ""}
-            </p>
-            <p className="mt-0.5 text-sm font-medium text-fg">
-              {recommended.player.name} <span className="text-muted">({recommended.player.position})</span> —{" "}
-              {recommended.marginal > 0 ? (
-                <>+{recommended.marginal.toFixed(1)} pts to your starting lineup</>
-              ) : (
-                <>{recommended.player.vbd.toFixed(1)} pts over replacement</>
-              )}
-            </p>
-            <p className="mt-1 text-xs text-muted">
-              {recommended.marginal > 0 ? (
-                myRoster.length > 0 ? (
-                  <>Your best available upgrade — raises your projected starting VBD from {baseStartingVbd.toFixed(1)} to {(baseStartingVbd + recommended.marginal).toFixed(1)}. </>
-                ) : drafted.size === 0 ? (
-                  <>Nothing drafted yet, so this is simply the top value on the board. </>
+        <div className="rounded-2xl border border-accent/30 bg-accent-soft px-4 py-3 sm:px-5">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <p className="font-mono text-[10px] uppercase tracking-wide text-accent">
+                Recommended pick{posFilter !== "ALL" ? ` · ${posFilter}` : ""}
+              </p>
+              <p className="mt-0.5 text-sm font-medium text-fg">
+                {recommended.player.name} <span className="text-muted">({recommended.player.position})</span> —{" "}
+                {recommended.marginal > 0 ? (
+                  <>+{recommended.marginal.toFixed(1)} pts to your starting lineup</>
+                ) : (
+                  <>{recommended.player.vbd.toFixed(1)} pts over replacement</>
+                )}
+              </p>
+              <p className="mt-1 text-xs text-muted">
+                {recommended.marginal > 0 ? (
+                  myRoster.length > 0 ? (
+                    <>Your best available upgrade — raises your projected starting VBD from {baseStartingVbd.toFixed(1)} to {(baseStartingVbd + recommended.marginal).toFixed(1)}. </>
+                  ) : drafted.size === 0 ? (
+                    <>Nothing drafted yet, so this is simply the top value on the board. </>
+                  ) : (
+                    <>
+                      {drafted.size} players are off the board, but none are tagged as yours yet, so this is just the top value on the board
+                      — not adjusted for your actual roster.{" "}
+                    </>
+                  )
                 ) : (
                   <>
-                    {drafted.size} players are off the board, but none are tagged as yours yet, so this is just the top value on the board
-                    — not adjusted for your actual roster.{" "}
+                    Your starters are already ahead of him here — he&rsquo;d be bench value ({myStrength.benchOpen} of {myStrength.benchCapacity}{" "}
+                    bench spot{myStrength.benchCapacity === 1 ? "" : "s"} still open), but still your best pick by raw VBD.{" "}
                   </>
-                )
-              ) : (
-                <>
-                  Your starters are already ahead of him here — he&rsquo;d be bench value ({myStrength.benchOpen} of {myStrength.benchCapacity}{" "}
-                  bench spot{myStrength.benchCapacity === 1 ? "" : "s"} still open), but still your best pick by raw VBD.{" "}
-                </>
-              )}
-              {recommended.player.tierSize <= 1 ? (
-                <>Alone in Tier {recommended.player.tier} at {recommended.player.position} — the next tier drops off, so don&rsquo;t wait on him.</>
-              ) : (
-                <>
-                  Tier {recommended.player.tier} of {recommended.player.tierSize} similar {recommended.player.position}s — {recommended.player.tierSize - 1} more
-                  within reach of this value.
-                </>
-              )}
-              {recommended.player.valueDelta != null && recommended.player.valueDelta > 0 && (
-                <>
-                  {" "}
-                  He&rsquo;s also going at ADP {recommended.player.adp ?? recommended.player.searchRank ?? "—"} while ranking #{recommended.player.vorpRank}{" "}
-                  by value — a {recommended.player.valueDelta}-spot discount versus the market.
-                </>
-              )}
-            </p>
+                )}
+                {recommended.player.tierSize <= 1 ? (
+                  <>Alone in Tier {recommended.player.tier} at {recommended.player.position} — the next tier drops off, so don&rsquo;t wait on him.</>
+                ) : (
+                  <>
+                    Tier {recommended.player.tier} of {recommended.player.tierSize} similar {recommended.player.position}s — {recommended.player.tierSize - 1} more
+                    within reach of this value.
+                  </>
+                )}
+                {recommended.player.valueDelta != null && recommended.player.valueDelta > 0 && (
+                  <>
+                    {" "}
+                    He&rsquo;s also going at ADP {recommended.player.adp ?? recommended.player.searchRank ?? "—"} while ranking #{recommended.player.vorpRank}{" "}
+                    by value — a {recommended.player.valueDelta}-spot discount versus the market.
+                  </>
+                )}
+                {recommended.scarcityDropoff != null && recommended.picksUntilNextTurn != null && recommended.survival && (
+                  <>
+                    {" "}
+                    {recommended.picksUntilNextTurn} other pick{recommended.picksUntilNextTurn === 1 ? "" : "s"} happen before your next
+                    turn — the best {recommended.player.position} likely to still be there then projects{" "}
+                    {recommended.scarcityDropoff.toFixed(1)} pts worse ({SURVIVAL_LABEL[recommended.survival]} himself).
+                  </>
+                )}
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => onMarkMine(recommended.player.id)}
+              className="shrink-0 text-xs font-medium text-accent hover:underline"
+            >
+              Draft him
+            </button>
           </div>
-          <button
-            type="button"
-            onClick={() => onMarkMine(recommended.player.id)}
-            className="shrink-0 text-xs font-medium text-accent hover:underline"
-          >
-            Draft him
-          </button>
+
+          {recommendations.length > 1 && (
+            <div className="mt-3 space-y-1 border-t border-accent/20 pt-3">
+              {recommendations.slice(1).map((rec, idx) => (
+                <div key={rec.player.id} className="flex flex-wrap items-center justify-between gap-2 rounded-lg px-2 py-1.5 text-xs hover:bg-bg-elevated/60">
+                  <span className="flex-1 truncate">
+                    <span className="mr-1.5 font-mono text-muted">#{idx + 2}</span>
+                    <span className="font-medium text-fg">{rec.player.name}</span> <span className="text-muted">({rec.player.position})</span>
+                    <span className="text-muted">
+                      {" "}
+                      · {rec.marginal > 0 ? `+${rec.marginal.toFixed(1)} marginal` : `${rec.player.vbd.toFixed(1)} VBD`}
+                      {rec.scarcityDropoff != null && rec.survival && ` · ${rec.scarcityDropoff.toFixed(1)} pt drop-off (${SURVIVAL_LABEL[rec.survival]})`}
+                    </span>
+                  </span>
+                  <button type="button" onClick={() => onMarkMine(rec.player.id)} className="shrink-0 font-medium text-accent hover:underline">
+                    Draft
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+
+          <div className="mt-3 flex flex-wrap items-center gap-3 border-t border-accent/20 pt-3 text-xs text-muted">
+            <label className="flex items-center gap-2">
+              Scarcity weight
+              <input
+                type="range"
+                min={0}
+                max={2}
+                step={0.1}
+                value={scarcityWeight}
+                onChange={(e) => setScarcityWeight(Number(e.target.value))}
+                className="w-28 align-middle"
+              />
+              <span className="font-mono">{scarcityWeight.toFixed(1)}</span>
+            </label>
+            {!draftPositionContext && (
+              <span>
+                Sync a mock/live draft with your username to also weigh how many players at each position will likely be gone before your
+                next turn.
+              </span>
+            )}
+          </div>
         </div>
       )}
 

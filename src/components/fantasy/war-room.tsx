@@ -6,6 +6,7 @@ import type { SleeperDraftPick } from "@/lib/fantasy/sleeper";
 import {
   clearAllFantasyData,
   loadDefense,
+  loadDraftPosition,
   loadDrafted,
   loadExcluded,
   loadGamesMissed,
@@ -16,6 +17,7 @@ import {
   loadSchedule,
   loadWatchlist,
   saveDefense,
+  saveDraftPosition,
   saveDrafted,
   saveExcluded,
   saveGamesMissed,
@@ -24,6 +26,7 @@ import {
   savePlayers,
   saveSchedule,
   saveWatchlist,
+  type DraftPosition,
 } from "@/lib/fantasy/storage";
 import { DEFAULT_LEAGUE, type DefenseRating, type LeagueSettings, type Player, type ScheduleEntry } from "@/lib/fantasy/types";
 import { DataImportPanel } from "./data-import-panel";
@@ -48,6 +51,7 @@ type Store = {
   drafted: Set<string>;
   excluded: Set<string>;
   myTeam: Set<string>;
+  draftPosition: DraftPosition | null;
 };
 
 const EMPTY_STORE: Store = {
@@ -62,11 +66,13 @@ const EMPTY_STORE: Store = {
   drafted: new Set(),
   excluded: new Set(),
   myTeam: new Set(),
+  draftPosition: null,
 };
 
 export function WarRoom() {
   const [store, setStore] = useState<Store>(EMPTY_STORE);
-  const { hydrated, players, syncedAt, league, schedule, defense, gamesMissed, watchlist, drafted, excluded, myTeam } = store;
+  const { hydrated, players, syncedAt, league, schedule, defense, gamesMissed, watchlist, drafted, excluded, myTeam, draftPosition } =
+    store;
 
   // Hydrate from localStorage on mount. This is a deliberate exception to
   // react-hooks/set-state-in-effect: localStorage isn't readable during SSR,
@@ -90,12 +96,16 @@ export function WarRoom() {
       drafted: new Set(loadDrafted()),
       excluded: new Set(loadExcluded()),
       myTeam: new Set(loadMyTeam()),
+      draftPosition: loadDraftPosition(),
     });
   }, []);
 
   useEffect(() => {
     if (hydrated) saveLeague(league);
   }, [league, hydrated]);
+  useEffect(() => {
+    if (hydrated) saveDraftPosition(draftPosition);
+  }, [draftPosition, hydrated]);
   useEffect(() => {
     if (hydrated) saveSchedule(schedule);
   }, [schedule, hydrated]);
@@ -227,7 +237,12 @@ export function WarRoom() {
     });
   }
 
-  function handleDraftSynced(newLeague: LeagueSettings, picks: SleeperDraftPick[], myUserId?: string) {
+  function handleDraftSynced(
+    newLeague: LeagueSettings,
+    picks: SleeperDraftPick[],
+    myUserId?: string,
+    myDraftSlot?: number | null
+  ) {
     const pickByPlayerId = new Map(picks.filter((p) => p.player_id).map((p) => [p.player_id, p.pick_no]));
     const myPlayerIds = new Set(
       myUserId ? picks.filter((p) => p.player_id && p.picked_by === myUserId).map((p) => p.player_id) : []
@@ -250,6 +265,10 @@ export function WarRoom() {
       // someone else must NOT stay "Mine" just because it was true before
       // sync; that's what the previous (inverted) filter got backwards.
       myTeam: new Set([...prev.myTeam].filter((id) => !pickByPlayerId.has(id)).concat([...myPlayerIds])),
+      // Powers the "will he be there next round?" scarcity estimate — needs
+      // both where you sit in the snake order and how many picks have
+      // actually happened so far in this specific draft.
+      draftPosition: { myDraftSlot: myDraftSlot ?? prev.draftPosition?.myDraftSlot ?? null, pickCount: pickByPlayerId.size },
     }));
   }
 
@@ -321,6 +340,7 @@ export function WarRoom() {
             drafted={drafted}
             myTeam={myTeam}
             league={league}
+            draftPosition={draftPosition}
             excludedPlayers={excludedPlayers}
             onToggleWatch={toggleWatch}
             onMarkMine={markMine}

@@ -199,6 +199,8 @@ export type SleeperDraft = {
     slots_bn?: number;
   };
   metadata?: { scoring_type?: string };
+  /** Snake-order slot (1-indexed) assigned to each Sleeper user_id, once the draft board is set. Null/absent before then. */
+  draft_order?: Record<string, number> | null;
 };
 
 /** Mock drafts and live/in-progress league drafts are both fetched the same way. */
@@ -215,6 +217,17 @@ export type SleeperDraftPick = {
 
 export async function fetchSleeperDraftPicks(draftId: string): Promise<SleeperDraftPick[]> {
   return getJson<SleeperDraftPick[]>(`/draft/${parseDraftId(draftId)}/picks`);
+}
+
+export type SleeperDraftSummary = {
+  draft_id: string;
+  status: "pre_draft" | "drafting" | "complete" | string;
+  type: "snake" | "linear" | "auction" | string;
+};
+
+/** Every draft a league has ever run (usually one, but keepers/rebuilds can have more) — most recent first. */
+export async function fetchSleeperLeagueDrafts(leagueId: string): Promise<SleeperDraftSummary[]> {
+  return getJson<SleeperDraftSummary[]>(`/league/${leagueId.trim()}/drafts`);
 }
 
 /** Maps a Sleeper draft's settings (mock or real) onto our LeagueSettings shape. */
