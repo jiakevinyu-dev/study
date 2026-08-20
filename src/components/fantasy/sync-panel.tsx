@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { RefreshCw, Search } from "lucide-react";
 import {
   detectDraftShape,
@@ -45,6 +45,8 @@ export function SyncPanel({ syncedAt, playerCount, onPlayersSynced, onLeagueDete
   const [draftSummary, setDraftSummary] = useState<{ id: string; status: string; pickCount: number; myPickCount: number | null } | null>(
     null
   );
+  const [autoRefresh, setAutoRefresh] = useState(true);
+  const [lastPolledAt, setLastPolledAt] = useState<number | null>(null);
 
   async function syncPlayers() {
     setPlayerSyncState("loading");
@@ -113,9 +115,11 @@ export function SyncPanel({ syncedAt, playerCount, onPlayersSynced, onLeagueDete
     }
   }
 
-  async function syncDraft(input: string, myUsernameInput: string) {
-    setDraftSyncState("loading");
-    setDraftSyncError(null);
+  async function syncDraft(input: string, myUsernameInput: string, opts: { silent?: boolean } = {}) {
+    if (!opts.silent) {
+      setDraftSyncState("loading");
+      setDraftSyncError(null);
+    }
     try {
       const draft = await fetchSleeperDraft(input);
       const picks = await fetchSleeperDraftPicks(input);
@@ -127,10 +131,13 @@ export function SyncPanel({ syncedAt, playerCount, onPlayersSynced, onLeagueDete
           myUserId = (await fetchSleeperUser(myUsernameInput)).user_id;
         } catch {
           // Non-fatal — the draft still syncs, it just can't auto-tag "Mine" picks.
-          setDraftSyncError(`Synced the draft, but couldn't find Sleeper user "${myUsernameInput}" to tag your picks.`);
+          if (!opts.silent) setDraftSyncError(`Synced the draft, but couldn't find Sleeper user "${myUsernameInput}" to tag your picks.`);
         }
       }
 
+      // League settings (teams, roster slots, scoring) come straight from
+      // the draft's own settings every sync — there's nothing to configure
+      // separately once you're pointed at a draft.
       onDraftSynced(
         {
           teams: shape.teams,
@@ -148,12 +155,30 @@ export function SyncPanel({ syncedAt, playerCount, onPlayersSynced, onLeagueDete
         pickCount: picks.filter((p) => p.player_id).length,
         myPickCount: myUserId ? picks.filter((p) => p.player_id && p.picked_by === myUserId).length : null,
       });
-      setDraftSyncState("idle");
+      setLastPolledAt(Date.now());
+      if (!opts.silent) setDraftSyncState("idle");
     } catch (err) {
-      setDraftSyncState("error");
-      setDraftSyncError(err instanceof Error ? err.message : "Draft sync failed — check the draft ID or URL");
+      if (!opts.silent) {
+        setDraftSyncState("error");
+        setDraftSyncError(err instanceof Error ? err.message : "Draft sync failed — check the draft ID or URL");
+      }
+      // A silent background poll that fails (e.g. a transient network blip)
+      // just tries again next interval rather than surfacing an error.
     }
   }
+
+  // While a draft is actively in progress, poll picks automatically so Mine
+  // /Taken status and the board update as the draft happens — no manual
+  // "Refresh picks" clicks needed. Stops on its own once the draft
+  // completes, or if autoRefresh is turned off.
+  useEffect(() => {
+    if (!draftSummary || !autoRefresh || draftSummary.status !== "drafting") return;
+    const id = setInterval(() => {
+      syncDraft(draftSummary.id, myUsername, { silent: true });
+    }, 6000);
+    return () => clearInterval(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [draftSummary?.id, draftSummary?.status, autoRefresh, myUsername]);
 
   return (
     <Card>
@@ -236,10 +261,12 @@ export function SyncPanel({ syncedAt, playerCount, onPlayersSynced, onLeagueDete
       <div className="mt-6 space-y-3 border-t border-border pt-5">
         <FieldLabel>Mock draft / live draft (marks picks off the board as they happen)</FieldLabel>
         <p className="text-xs text-muted">
-          Paste the draft ID or the URL from a Sleeper mock (or a real league&rsquo;s in-progress draft). Every
-          picked player is marked drafted and gets his pick number as ADP, so the board reflects what actually
-          happened in that draft. Add your Sleeper username to auto-tag your own picks as &ldquo;Mine&rdquo; for the
-          My Team panel — otherwise just click Mine on your picks as you make them.
+          Paste the draft ID or the URL from a Sleeper mock (or a real league&rsquo;s in-progress draft). League
+          settings (teams, roster slots, scoring) come straight from the draft itself — nothing to configure
+          separately. Every picked player is marked drafted and gets his pick number as ADP. Add your Sleeper
+          username and your own picks auto-tag as &ldquo;Mine&rdquo; for the My Team panel as they happen — while
+          the draft is live, this polls automatically every few seconds, so you don&rsquo;t have to click Mine or
+          Taken yourself.
         </p>
         <div className="flex flex-wrap items-end gap-3">
           <div className="flex-1 min-w-[180px]">
@@ -271,18 +298,32 @@ export function SyncPanel({ syncedAt, playerCount, onPlayersSynced, onLeagueDete
 
         {draftSyncState === "error" && <p className="text-xs text-red-600 dark:text-red-400">{draftSyncError}</p>}
         {draftSummary && (
-          <div className="flex items-center justify-between gap-2 rounded-lg bg-bg-inset px-3 py-2">
-            <p className="text-xs text-emerald-700 dark:text-emerald-400">
-              Draft {draftSummary.id} &middot; {draftSummary.status} &middot; {draftSummary.pickCount} picks on the board
-              {draftSummary.myPickCount != null && ` · ${draftSummary.myPickCount} tagged as yours`}
-            </p>
-            <button
-              type="button"
-              onClick={() => syncDraft(draftSummary.id, myUsername)}
-              className="shrink-0 text-xs font-medium text-accent hover:underline"
-            >
-              Refresh picks
-            </button>
+          <div className="space-y-2 rounded-lg bg-bg-inset px-3 py-2">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <p className="text-xs text-emerald-700 dark:text-emerald-400">
+                {draftSummary.status === "drafting" && autoRefresh && (
+                  <span className="mr-1.5 inline-block h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-500 align-middle" aria-hidden="true" />
+                )}
+                Draft {draftSummary.id} &middot; {draftSummary.status} &middot; {draftSummary.pickCount} picks on the board
+                {draftSummary.myPickCount != null && ` · ${draftSummary.myPickCount} tagged as yours`}
+              </p>
+              <button
+                type="button"
+                onClick={() => syncDraft(draftSummary.id, myUsername)}
+                className="shrink-0 text-xs font-medium text-accent hover:underline"
+              >
+                Refresh now
+              </button>
+            </div>
+            {draftSummary.status === "drafting" && (
+              <div className="flex items-center justify-between gap-2">
+                <label className="flex items-center gap-1.5 text-xs text-muted">
+                  <input type="checkbox" checked={autoRefresh} onChange={(e) => setAutoRefresh(e.target.checked)} />
+                  Auto-refresh every 6s while drafting
+                </label>
+                {lastPolledAt && <span className="text-[11px] text-muted">Last update {new Date(lastPolledAt).toLocaleTimeString()}</span>}
+              </div>
+            )}
           </div>
         )}
         {draftSyncState !== "error" && draftSyncError && <p className="text-xs text-amber-700 dark:text-amber-400">{draftSyncError}</p>}
