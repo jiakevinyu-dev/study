@@ -260,7 +260,7 @@ export function WarRoom() {
       <StatCards rows={rows} playerCount={activePlayers.length} />
 
       <div className="mt-6">
-        <MyTeamPanel rows={rows} myTeam={myTeam} league={league} />
+        <MyTeamPanel rows={rows} myTeam={myTeam} drafted={drafted} league={league} />
       </div>
 
       <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-[360px_1fr]">

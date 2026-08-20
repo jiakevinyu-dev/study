@@ -341,13 +341,19 @@ export function SyncPanel({ syncedAt, playerCount, onPlayersSynced, onLeagueDete
         {draftSummary && (
           <div className="space-y-2 rounded-lg bg-bg-inset px-3 py-2">
             <div className="flex flex-wrap items-center justify-between gap-2">
-              <p className="text-xs text-emerald-700 dark:text-emerald-400">
-                {draftSummary.status !== "complete" && autoRefresh && (
-                  <span className="mr-1.5 inline-block h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-500 align-middle" aria-hidden="true" />
-                )}
-                Draft {draftSummary.id} &middot; {draftSummary.status} &middot; {draftSummary.pickCount} picks on the board
-                {draftSummary.myPickCount != null && ` · ${draftSummary.myPickCount} tagged as yours`}
-              </p>
+              <div>
+                <p className="text-xs text-emerald-700 dark:text-emerald-400">
+                  {draftSummary.status !== "complete" && autoRefresh && (
+                    <span className="mr-1.5 inline-block h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-500 align-middle" aria-hidden="true" />
+                  )}
+                  Draft {draftSummary.id} &middot; {draftSummary.status} &middot; {draftSummary.pickCount} picks on the board
+                </p>
+                <p className={draftSummary.myPickCount ? "text-xs text-emerald-700 dark:text-emerald-400" : "text-xs text-amber-700 dark:text-amber-400"}>
+                  {draftSummary.myPickCount != null
+                    ? `${draftSummary.myPickCount} tagged as yours`
+                    : "No username set — none of these picks are being tagged as yours"}
+                </p>
+              </div>
               <span className="flex shrink-0 items-center gap-3">
                 <button
                   type="button"

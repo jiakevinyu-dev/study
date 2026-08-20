@@ -174,6 +174,14 @@ export function RankingsTable({
 
   return (
     <div className="space-y-3">
+      {myTeam.size === 0 && drafted.size >= 5 && (
+        <div className="rounded-2xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-xs text-amber-800 dark:text-amber-300 sm:px-5">
+          <span className="font-medium">{drafted.size} players are off the board, but none are tagged as yours.</span> My Team and the
+          Recommended Pick below can&rsquo;t account for your actual roster until some picks are — add your Sleeper username under Sleeper
+          Sync so a synced draft auto-tags them, or click <span className="font-medium text-fg">Mine</span> on your own picks as you make
+          them.
+        </div>
+      )}
       {recommended && (
         <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-accent/30 bg-accent-soft px-4 py-3 sm:px-5">
           <div>
@@ -192,8 +200,13 @@ export function RankingsTable({
               {recommended.marginal > 0 ? (
                 myRoster.length > 0 ? (
                   <>Your best available upgrade — raises your projected starting VBD from {baseStartingVbd.toFixed(1)} to {(baseStartingVbd + recommended.marginal).toFixed(1)}. </>
-                ) : (
+                ) : drafted.size === 0 ? (
                   <>Nothing drafted yet, so this is simply the top value on the board. </>
+                ) : (
+                  <>
+                    {drafted.size} players are off the board, but none are tagged as yours yet, so this is just the top value on the board
+                    — not adjusted for your actual roster.{" "}
+                  </>
                 )
               ) : (
                 <>Your starters are already ahead of him here — he&rsquo;d be bench value, but still your best pick by raw VBD. </>
