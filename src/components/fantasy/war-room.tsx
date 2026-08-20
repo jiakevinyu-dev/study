@@ -122,7 +122,26 @@ export function WarRoom() {
   // dropped before the board is computed, so they can't skew replacement
   // levels for the position they'd otherwise occupy. Kept around separately
   // (by id, from the raw pool) purely so the UI can offer an undo.
-  const activePlayers = useMemo(() => players.filter((p) => !excluded.has(p.id)), [players, excluded]);
+  //
+  // A relevance cutoff (default: ADP/search_rank worse than 300) is applied
+  // the same way: Sleeper's full player dump runs to a couple thousand
+  // names, most of them practice-squad or deep-inactive players no redraft
+  // league will ever start, and that long tail is exactly what let a single
+  // real standout at a position get merged into a "Tier 1" alongside
+  // hundreds of irrelevant players. `undefined` (old localStorage saved
+  // before this setting existed) falls back to the same 300 default as a
+  // fresh league. Anyone already on your roster or off the board stays
+  // visible regardless — the cutoff only prunes the *unrostered* pool.
+  const poolRelevanceCutoff = league.poolRelevanceCutoff ?? DEFAULT_LEAGUE.poolRelevanceCutoff;
+  const activePlayers = useMemo(() => {
+    return players.filter((p) => {
+      if (excluded.has(p.id)) return false;
+      if (poolRelevanceCutoff == null) return true;
+      if (myTeam.has(p.id) || drafted.has(p.id)) return true;
+      const rank = p.adp ?? p.searchRank;
+      return rank == null || rank <= poolRelevanceCutoff;
+    });
+  }, [players, excluded, poolRelevanceCutoff, myTeam, drafted]);
   const excludedPlayers = useMemo(() => players.filter((p) => excluded.has(p.id)), [players, excluded]);
 
   const { rows, scarcity } = useMemo(
@@ -145,7 +164,11 @@ export function WarRoom() {
   function handleLeagueDetected(newLeague: LeagueSettings, rosteredByPlayerId: Map<string, string>) {
     setStore((prev) => ({
       ...prev,
-      league: newLeague,
+      // Roster/scoring/etc. come fresh from the synced league, but the pool
+      // relevance cutoff is a personal board preference, not a league
+      // setting — keep whatever the user already had rather than silently
+      // resetting it to the default on every sync.
+      league: { ...newLeague, poolRelevanceCutoff: prev.league.poolRelevanceCutoff },
       players: prev.players.map((p) => ({ ...p, rosteredBy: rosteredByPlayerId.get(p.id) ?? null })),
     }));
   }
@@ -211,7 +234,9 @@ export function WarRoom() {
     );
     setStore((prev) => ({
       ...prev,
-      league: newLeague,
+      // Same reasoning as handleLeagueDetected: the pool relevance cutoff is
+      // a personal board preference, not part of the draft's own settings.
+      league: { ...newLeague, poolRelevanceCutoff: prev.league.poolRelevanceCutoff },
       players: prev.players.map((p) =>
         pickByPlayerId.has(p.id)
           ? { ...p, adp: pickByPlayerId.get(p.id)!, rosteredBy: `Draft pick #${pickByPlayerId.get(p.id)}` }

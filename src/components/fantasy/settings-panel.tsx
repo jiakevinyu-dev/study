@@ -49,6 +49,11 @@ export function SettingsPanel({ league, onChange }: Props) {
       .filter((n) => Number.isFinite(n) && n > 0);
     onChange({ ...league, playoffWeeks: weeks });
   };
+  const poolRelevanceCutoff = league.poolRelevanceCutoff ?? 300;
+  const setPoolRelevanceCutoff = (raw: string) => {
+    const trimmed = raw.trim();
+    onChange({ ...league, poolRelevanceCutoff: trimmed === "" ? null : Math.max(1, Number(trimmed)) });
+  };
 
   const isSuperflex = league.roster.SUPER_FLEX > 0;
   const isPpr = league.scoring.rec >= 0.75;
@@ -127,6 +132,22 @@ export function SettingsPanel({ league, onChange }: Props) {
           <div>
             <FieldLabel>Fantasy playoff weeks (comma-separated)</FieldLabel>
             <input className={inputClass} value={league.playoffWeeks.join(", ")} onChange={(e) => setPlayoffWeeks(e.target.value)} />
+          </div>
+
+          <div>
+            <FieldLabel>Hide players ranked worse than (ADP / search_rank)</FieldLabel>
+            <input
+              type="number"
+              className={inputClass}
+              value={poolRelevanceCutoff ?? ""}
+              placeholder="No cutoff"
+              onChange={(e) => setPoolRelevanceCutoff(e.target.value)}
+              min={1}
+            />
+            <p className="mt-1 text-xs text-muted">
+              Sleeper&rsquo;s full player list runs to a couple thousand names — most are practice-squad or deep-inactive
+              players no redraft league will ever start. Clear the field to show every synced player instead.
+            </p>
           </div>
         </div>
       )}

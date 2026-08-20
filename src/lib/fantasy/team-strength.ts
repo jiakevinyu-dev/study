@@ -71,6 +71,11 @@ export function computeTeamStrength(myRoster: WarRoomRow[], league: LeagueSettin
     .filter((a) => a.player == null && SLOT_ELIGIBILITY[a.slot].length === 1)
     .map((a) => SLOT_ELIGIBILITY[a.slot][0]);
 
+  const benchCapacity = league.roster.BENCH;
+  const benchOpen = Math.max(benchCapacity - bench.length, 0);
+  const rosterCapacity = totalSlots + benchCapacity;
+  const rosterFull = filledSlots >= totalSlots && bench.length >= benchCapacity;
+
   return {
     assignments,
     startingPoints: Math.round(startingPoints * 10) / 10,
@@ -79,5 +84,9 @@ export function computeTeamStrength(myRoster: WarRoomRow[], league: LeagueSettin
     filledSlots,
     totalSlots,
     openPositions,
+    benchOpen,
+    benchCapacity,
+    rosterCapacity,
+    rosterFull,
   };
 }

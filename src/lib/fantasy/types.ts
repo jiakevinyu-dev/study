@@ -90,6 +90,16 @@ export type LeagueSettings = {
   leagueName?: string;
   /** Present once settings were pulled from a real Sleeper league. */
   sleeperLeagueId?: string;
+  /**
+   * Players ranked worse than this by ADP (or search_rank, when no real ADP
+   * is on file) are dropped from the board entirely — Sleeper's full player
+   * dump includes thousands of practice-squad/inactive-depth-chart names no
+   * redraft league will ever start, and their long, near-flat tail was
+   * what made a single true standout at a position get merged into a
+   * "Tier 1" alongside hundreds of irrelevant players. Null disables the
+   * cutoff (show everyone).
+   */
+  poolRelevanceCutoff: number | null;
 };
 
 export const DEFAULT_LEAGUE: LeagueSettings = {
@@ -98,6 +108,7 @@ export const DEFAULT_LEAGUE: LeagueSettings = {
   roster: DEFAULT_ROSTER,
   playoffWeeks: [15, 16, 17],
   leagueName: "12-Team Superflex PPR (No TE Premium)",
+  poolRelevanceCutoff: 300,
 };
 
 /** Raw counting-stat projection for a season, used to derive fantasy points. */
@@ -218,9 +229,19 @@ export type TeamStrength = {
   startingPoints: number;
   /** Sum of VBD across all filled starting slots — value added over a replacement-level team. */
   startingVbd: number;
+  /** Everyone on the roster who didn't fit a starting slot — may exceed benchCapacity if the roster's over capacity. */
   bench: WarRoomRow[];
   filledSlots: number;
+  /** Starting-lineup slot count (QB/RB/WR/TE/FLEX/SUPER_FLEX only — not bench). */
   totalSlots: number;
   /** Position(s) still needed to fill an empty dedicated/flex-eligible slot, most-empty first. */
   openPositions: Position[];
+  /** How many of the league's bench slots are still open. */
+  benchOpen: number;
+  /** League's bench slot count, straight from roster settings. */
+  benchCapacity: number;
+  /** Whole-roster capacity: starting slots + bench. */
+  rosterCapacity: number;
+  /** True once the roster has filled every starting slot and every bench slot. */
+  rosterFull: boolean;
 };
