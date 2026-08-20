@@ -295,6 +295,7 @@ export function WarRoom() {
             watchlist={watchlist}
             drafted={drafted}
             myTeam={myTeam}
+            league={league}
             excludedPlayers={excludedPlayers}
             onToggleWatch={toggleWatch}
             onMarkMine={markMine}

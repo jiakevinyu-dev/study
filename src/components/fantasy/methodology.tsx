@@ -14,7 +14,7 @@ const ITEMS = [
   {
     title: "Tiers — the opportunity-cost check VBD alone misses",
     body:
-      "VBD only compares a player to the worst startable player at his position — it doesn't say whether there's a near-twin of him sitting three picks later. Tiers do: at each position, players are clustered by real gaps in the value curve (a gap only starts a new tier once it's at least 12% of that position's VBD range), so a top-heavy position naturally gets a lonely Tier 1 and a big Tier 2, while a position that declines evenly gets many small tiers. Worked example: a locked-in TE1 sitting alone in Tier 1 with six comparable TEs bunched in Tier 2 a few points back shows up as 'T1 · 1 deep' — spending an early pick there costs you a scarcer position's Tier 1 for a TE edge you could've had two rounds later. The Tier column and the chart's bar gaps show this at every position; the Best Available banner calls out the tier context for whoever's on top.",
+      "VBD only compares a player to the worst startable player at his position — it doesn't say whether there's a near-twin of him sitting three picks later. Tiers do: at each position, players are clustered by real gaps in the value curve (a gap only starts a new tier once it's at least 12% of that position's VBD range), so a top-heavy position naturally gets a lonely Tier 1 and a big Tier 2, while a position that declines evenly gets many small tiers. Worked example: a locked-in TE1 sitting alone in Tier 1 with six comparable TEs bunched in Tier 2 a few points back shows up as 'T1 · 1 deep' — spending an early pick there costs you a scarcer position's Tier 1 for a TE edge you could've had two rounds later. The Tier column and the chart's bar gaps show this at every position; the Recommended Pick banner calls out the tier context for whoever's on top.",
   },
   {
     title: "Value vs ADP — who you can wait on",
@@ -25,6 +25,11 @@ const ITEMS = [
     title: "My Team & Team Strength",
     body:
       "Hit Mine on a player to add him to your roster; Taken marks him off the board without claiming him. The My Team panel then runs the same slot-filling logic as the league-wide scarcity simulation — dedicated slot, then FLEX, then SUPERFLEX — scoped to just your own roster, to find your value-maximizing starting lineup and its total projected points and VBD. That's what turns 'draft the best player available' into 'draft the player who most improves my actual lineup': two RBs you've already started don't need a third at the value an empty TE slot would unlock. Syncing a Sleeper draft with your username auto-tags your own picks as Mine; otherwise just click it yourself as you draft.",
+  },
+  {
+    title: "Recommended Pick — who actually helps your team right now",
+    body:
+      "Every undrafted player is run through the same starting-lineup simulation as My Team & Team Strength, as if you'd just drafted him — the banner recommends whoever raises your projected starting VBD the most, not just whoever has the highest raw VBD. A great QB when your QB and SUPERFLEX slots are both already started adds ~0 marginal value and loses to a merely-good player filling your empty TE slot. Ties (common once your starters are full) go first to whoever's in the thinner tier — less chance he's there next round — then to raw VBD, so late-round bench recommendations still make sense. Before you've drafted anyone, this is identical to picking the top VBD player, so it's a strict upgrade, not a different mode. When the market's letting the pick fall well past his value rank, that ADP discount is called out in the banner too — the concrete case of 'draft the guy whose ADP undersells him' the Value vs ADP column exists to catch.",
   },
   {
     title: "Injury risk",
