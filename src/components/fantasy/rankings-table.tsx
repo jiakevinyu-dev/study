@@ -130,6 +130,13 @@ export function RankingsTable({
 
   const recommended: Recommendation | null = recommendations[0] ?? null;
 
+  // Distinguishes "capped out" (a real, explicit reason) from "genuinely no
+  // players left" so filtering to a position you've hit your cap at doesn't
+  // just silently show nothing with no explanation.
+  const posFilterCap = posFilter !== "ALL" ? (league.positionCaps ?? {})[posFilter] : undefined;
+  const posFilterCappedOut =
+    posFilterCap != null && myRoster.filter((r) => r.position === posFilter).length >= posFilterCap;
+
   // Value-over-replacement is deliberately blind to "I have zero players at
   // a position I'm required to start" — that's a real gap pure VBD math
   // under-weights: a dedicated slot with nobody in it scores 0, not
@@ -196,6 +203,15 @@ export function RankingsTable({
         <div className="rounded-2xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-xs text-emerald-800 dark:text-emerald-300 sm:px-5">
           <span className="font-medium">Your roster is full</span> — {myStrength.totalSlots} starters and {myStrength.benchCapacity} bench
           spots, all filled. Nothing left to recommend.
+        </div>
+      )}
+      {!myStrength.rosterFull && recommendations.length === 0 && posFilterCappedOut && (
+        <div className="rounded-2xl border border-border bg-bg-inset px-4 py-3 text-xs text-muted sm:px-5">
+          <span className="font-medium text-fg">
+            {posFilter} is capped at {posFilterCap} in League Settings
+          </span>{" "}
+          and you&rsquo;ve already got that many — nothing left to recommend here. Draft one manually below if you really want
+          to go over, or raise the cap.
         </div>
       )}
       {recommended && zeroRosteredPositions.length > 0 && !zeroRosteredPositions.includes(recommended.player.position) && (

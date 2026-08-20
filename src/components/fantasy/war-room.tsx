@@ -175,10 +175,10 @@ export function WarRoom() {
     setStore((prev) => ({
       ...prev,
       // Roster/scoring/etc. come fresh from the synced league, but the pool
-      // relevance cutoff is a personal board preference, not a league
-      // setting — keep whatever the user already had rather than silently
-      // resetting it to the default on every sync.
-      league: { ...newLeague, poolRelevanceCutoff: prev.league.poolRelevanceCutoff },
+      // relevance cutoff and position caps are personal board preferences,
+      // not league settings — keep whatever the user already had rather
+      // than silently resetting them to the default on every sync.
+      league: { ...newLeague, poolRelevanceCutoff: prev.league.poolRelevanceCutoff, positionCaps: prev.league.positionCaps },
       players: prev.players.map((p) => ({ ...p, rosteredBy: rosteredByPlayerId.get(p.id) ?? null })),
     }));
   }
@@ -249,9 +249,10 @@ export function WarRoom() {
     );
     setStore((prev) => ({
       ...prev,
-      // Same reasoning as handleLeagueDetected: the pool relevance cutoff is
-      // a personal board preference, not part of the draft's own settings.
-      league: { ...newLeague, poolRelevanceCutoff: prev.league.poolRelevanceCutoff },
+      // Same reasoning as handleLeagueDetected: the pool relevance cutoff and
+      // position caps are personal board preferences, not part of the
+      // draft's own settings.
+      league: { ...newLeague, poolRelevanceCutoff: prev.league.poolRelevanceCutoff, positionCaps: prev.league.positionCaps },
       players: prev.players.map((p) =>
         pickByPlayerId.has(p.id)
           ? { ...p, adp: pickByPlayerId.get(p.id)!, rosteredBy: `Draft pick #${pickByPlayerId.get(p.id)}` }

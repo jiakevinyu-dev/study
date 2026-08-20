@@ -26,7 +26,7 @@
 
 import { estimateNextTurn, survivalTier, type NextTurnEstimate, type SurvivalTier } from "./draft-context";
 import { computeTeamStrength } from "./team-strength";
-import type { LeagueSettings, Position, WarRoomRow } from "./types";
+import { DEFAULT_LEAGUE, type LeagueSettings, type Position, type WarRoomRow } from "./types";
 
 export type DraftPositionContext = {
   teams: number;
@@ -64,6 +64,21 @@ export function getRecommendations(
   const scarcityWeight = opts.scarcityWeight ?? DEFAULT_SCARCITY_WEIGHT;
   const baseStartingVbd = computeTeamStrength(myRoster, league).startingVbd;
 
+  // Hard positional caps (e.g. "never more than 2 TEs") are excluded before
+  // any value math runs at all — not a scoring penalty, an actual "we'd
+  // never draft this" line. Marginal value and scarcity drop-off both only
+  // know "this player has some value somewhere"; neither knows a redraft
+  // roster simply won't carry a 3rd TE regardless of how his numbers look
+  // in an empty FLEX slot today.
+  const rosterCountByPosition = new Map<Position, number>();
+  for (const p of myRoster) rosterCountByPosition.set(p.position, (rosterCountByPosition.get(p.position) ?? 0) + 1);
+  const cappedOut = new Set<Position>();
+  const positionCaps = league.positionCaps ?? DEFAULT_LEAGUE.positionCaps;
+  for (const [pos, cap] of Object.entries(positionCaps) as [Position, number | undefined][]) {
+    if (cap != null && (rosterCountByPosition.get(pos) ?? 0) >= cap) cappedOut.add(pos);
+  }
+  const eligiblePool = cappedOut.size > 0 ? pool.filter((p) => !cappedOut.has(p.position)) : pool;
+
   // Snake-order pick window to my next turn, and — inside that — the
   // market-rank order of the whole undrafted pool, which is what tells us
   // "the Nth-most-likely-to-go player is the survival cutoff."
@@ -97,7 +112,7 @@ export function getRecommendations(
     }
   }
 
-  const scored: Recommendation[] = pool.map((player) => {
+  const scored: Recommendation[] = eligiblePool.map((player) => {
     const marginal = Math.round((computeTeamStrength([...myRoster, player], league).startingVbd - baseStartingVbd) * 10) / 10;
 
     let scarcityDropoff: number | null = null;

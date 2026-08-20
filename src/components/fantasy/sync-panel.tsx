@@ -110,8 +110,9 @@ export function SyncPanel({ syncedAt, playerCount, onPlayersSynced, onLeagueDete
           leagueName: shape.leagueName,
           sleeperLeagueId: shape.sleeperLeagueId,
           // war-room.tsx's handler preserves whatever the user already had
-          // set here — this default is just a type-satisfying placeholder.
+          // set here — these defaults are just type-satisfying placeholders.
           poolRelevanceCutoff: DEFAULT_LEAGUE.poolRelevanceCutoff,
+          positionCaps: DEFAULT_LEAGUE.positionCaps,
         },
         rosteredByPlayerId
       );
@@ -173,8 +174,9 @@ export function SyncPanel({ syncedAt, playerCount, onPlayersSynced, onLeagueDete
           playoffWeeks: [15, 16, 17],
           leagueName: `Sleeper draft ${draft.draft_id} (${draft.status})`,
           // war-room.tsx's handler preserves whatever the user already had
-          // set here — this default is just a type-satisfying placeholder.
+          // set here — these defaults are just type-satisfying placeholders.
           poolRelevanceCutoff: DEFAULT_LEAGUE.poolRelevanceCutoff,
+          positionCaps: DEFAULT_LEAGUE.positionCaps,
         },
         picks,
         myUserId,

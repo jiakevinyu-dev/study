@@ -100,6 +100,19 @@ export type LeagueSettings = {
    * cutoff (show everyone).
    */
   poolRelevanceCutoff: number | null;
+  /**
+   * Realistic ceiling on how many players at a position you'd ever actually
+   * roster — e.g. TE: 2 in most leagues, since with only 1 starting slot
+   * (rarely FLEX-relevant given how deep the position runs) a 3rd TE is
+   * never worth a pick over depth at a scarcer position. Unset = no cap.
+   * This is a hard exclusion from the recommendation list once hit, not a
+   * soft nudge: the marginal-value/scarcity math alone doesn't know "we'll
+   * never actually roster more than N of these," only "this one has some
+   * value" — which, left unconstrained, undervalues just how replaceable a
+   * deep position's 3rd-string options are relative to literally anything
+   * at a scarcer spot.
+   */
+  positionCaps: Partial<Record<Position, number>>;
 };
 
 export const DEFAULT_LEAGUE: LeagueSettings = {
@@ -109,6 +122,7 @@ export const DEFAULT_LEAGUE: LeagueSettings = {
   playoffWeeks: [15, 16, 17],
   leagueName: "12-Team Superflex PPR (No TE Premium)",
   poolRelevanceCutoff: 300,
+  positionCaps: { TE: 2 },
 };
 
 /** Raw counting-stat projection for a season, used to derive fantasy points. */
