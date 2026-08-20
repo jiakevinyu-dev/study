@@ -8,12 +8,14 @@ import {
   fetchSleeperDraft,
   fetchSleeperDraftPicks,
   fetchSleeperLeague,
+  fetchSleeperLeagueDrafts,
   fetchSleeperLeagueUsers,
   fetchSleeperPlayers,
   fetchSleeperRosters,
   fetchSleeperUser,
   fetchSleeperUserLeagues,
   type SleeperDraftPick,
+  type SleeperDraftSummary,
   type SleeperLeague,
 } from "@/lib/fantasy/sleeper";
 import { loadDraftSync, saveDraftSync } from "@/lib/fantasy/storage";
@@ -25,7 +27,7 @@ type Props = {
   playerCount: number;
   onPlayersSynced: (players: Player[]) => void;
   onLeagueDetected: (league: LeagueSettings, rosteredByPlayerId: Map<string, string>) => void;
-  onDraftSynced: (league: LeagueSettings, picks: SleeperDraftPick[], myUserId?: string) => void;
+  onDraftSynced: (league: LeagueSettings, picks: SleeperDraftPick[], myUserId?: string, myDraftSlot?: number | null) => void;
 };
 
 export function SyncPanel({ syncedAt, playerCount, onPlayersSynced, onLeagueDetected, onDraftSynced }: Props) {
@@ -38,6 +40,7 @@ export function SyncPanel({ syncedAt, playerCount, onPlayersSynced, onLeagueDete
   const [leagueSyncError, setLeagueSyncError] = useState<string | null>(null);
   const [foundLeagues, setFoundLeagues] = useState<SleeperLeague[]>([]);
   const [appliedLeagueName, setAppliedLeagueName] = useState<string | null>(null);
+  const [leagueDrafts, setLeagueDrafts] = useState<SleeperDraftSummary[]>([]);
 
   const [draftInput, setDraftInput] = useState("");
   const [myUsername, setMyUsername] = useState("");
@@ -113,6 +116,23 @@ export function SyncPanel({ syncedAt, playerCount, onPlayersSynced, onLeagueDete
         rosteredByPlayerId
       );
       setAppliedLeagueName(shape.leagueName);
+      // Carry the username used to find this league over to the draft-sync
+      // field too, if that one's still empty — it's almost always the same
+      // person, and it's what lets the draft slot auto-detect below work
+      // without asking twice.
+      if (username.trim() && !myUsername.trim()) setMyUsername(username.trim());
+
+      // A league's draft(s) are discoverable without ever pasting an ID —
+      // most leagues only ever have one. Non-fatal if this fails; the
+      // manual draft ID/URL field below still works either way.
+      try {
+        const drafts = await fetchSleeperLeagueDrafts(id);
+        setLeagueDrafts(drafts);
+        if (drafts.length > 0 && !draftInput) setDraftInput(drafts[0].draft_id);
+      } catch {
+        setLeagueDrafts([]);
+      }
+
       setLeagueSyncState("idle");
     } catch (err) {
       setLeagueSyncState("error");
@@ -131,9 +151,11 @@ export function SyncPanel({ syncedAt, playerCount, onPlayersSynced, onLeagueDete
       const shape = detectDraftShape(draft);
 
       let myUserId: string | undefined;
+      let myDraftSlot: number | null = null;
       if (myUsernameInput.trim()) {
         try {
           myUserId = (await fetchSleeperUser(myUsernameInput)).user_id;
+          myDraftSlot = draft.draft_order?.[myUserId] ?? null;
         } catch {
           // Non-fatal — the draft still syncs, it just can't auto-tag "Mine" picks.
           if (!opts.silent) setDraftSyncError(`Synced the draft, but couldn't find Sleeper user "${myUsernameInput}" to tag your picks.`);
@@ -155,7 +177,8 @@ export function SyncPanel({ syncedAt, playerCount, onPlayersSynced, onLeagueDete
           poolRelevanceCutoff: DEFAULT_LEAGUE.poolRelevanceCutoff,
         },
         picks,
-        myUserId
+        myUserId,
+        myDraftSlot
       );
       setDraftSummary({
         id: draft.draft_id,
@@ -299,6 +322,7 @@ export function SyncPanel({ syncedAt, playerCount, onPlayersSynced, onLeagueDete
         {appliedLeagueName && leagueSyncState === "idle" && !leagueSyncError && (
           <p className="text-xs text-emerald-700 dark:text-emerald-400">
             Applied settings from &ldquo;{appliedLeagueName}&rdquo; — review them below before you draft.
+            {leagueDrafts.length > 0 && " Its draft is pre-filled below — add your username and hit Sync draft."}
           </p>
         )}
       </div>

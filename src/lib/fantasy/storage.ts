@@ -21,6 +21,7 @@ const KEYS = {
   excluded: "ff-war-room:excluded",
   myTeam: "ff-war-room:my-team",
   draftSync: "ff-war-room:draft-sync",
+  draftPosition: "ff-war-room:draft-position",
 } as const;
 
 function read<T>(key: string, fallback: T): T {
@@ -90,6 +91,17 @@ export type DraftSyncSettings = {
  */
 export const loadDraftSync = () => read<DraftSyncSettings | null>(KEYS.draftSync, null);
 export const saveDraftSync = (settings: DraftSyncSettings | null) => write(KEYS.draftSync, settings);
+
+export type DraftPosition = {
+  /** Your 1-indexed snake-draft slot, from the synced draft's draft_order. Null if it couldn't be resolved (e.g. no username given). */
+  myDraftSlot: number | null;
+  /** How many picks have actually been made in the synced draft — the next pick is pickCount + 1. */
+  pickCount: number;
+};
+
+/** Where you sit in the snake order, from the last draft sync — powers the "will he be there next round?" estimate. */
+export const loadDraftPosition = () => read<DraftPosition | null>(KEYS.draftPosition, null);
+export const saveDraftPosition = (position: DraftPosition | null) => write(KEYS.draftPosition, position);
 
 export function clearAllFantasyData() {
   if (typeof window === "undefined") return;
