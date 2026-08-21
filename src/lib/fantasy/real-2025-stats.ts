@@ -1,0 +1,266 @@
+/**
+ * Real, final 2025-season box-score stat lines for the top ~213 fantasy-
+ * relevant players, pasted in directly by the user from Sleeper's own
+ * stats table. Used as a same-season baseline projection: a player's real
+ * receptions/yards/TDs from a completed season, run through pointsFromStatLine
+ * with the league's *current* scoring settings, rather than the ADP-decay
+ * shape-estimate curve in scoring.ts.
+ *
+ * This is what actually fixes the RB-recommendation complaint: the decay
+ * curve is a smooth, hand-tuned shape approximation that cannot know a
+ * position's real value cliff is uneven (RB is famously top-heavy — the
+ * "dead zone" — while QB is comparatively flat through the SUPERFLEX-
+ * relevant range in a 2QB league). Real production says that directly:
+ * plug it in and the exact dot product with your scoring settings reflects
+ * the position's actual shape instead of a curve's guess at it.
+ *
+ * Deliberately last season's real outcome, not a 2026 forecast — that is
+ * an explicit, disclosed choice (a transparent "what actually happened"
+ * baseline beats a guessed shape), not a claim about what will happen this
+ * year. It will not reflect this season's injuries, role changes, rookies
+ * with no 2025 log, coaching changes, etc. Anyone not in this list (rookies,
+ * post-trade role changes, deep waiver names) still falls back to the ADP
+ * decay curve, now fixed to key off real rank gap (see scoring.ts). CSV-
+ * imported/manual players are untouched by this — it only fills in for
+ * Sleeper-synced players lacking a real projection of their own.
+ *
+ * Two-pt conversions aren't part of Sleeper's exported columns, so they're
+ * omitted here (same as everywhere else this app has real stat data without
+ * that column) — a small, disclosed gap, not a silent one.
+ */
+
+import type { Position, StatProjection } from "./types";
+import { normalizeName } from "./imports";
+
+export type Real2025StatEntry = {
+  name: string;
+  position: Position;
+  team: string;
+  stats: StatProjection;
+};
+
+export const REAL_2025_STATS: Real2025StatEntry[] = [
+  { name: "Christian McCaffrey", position: "RB", team: "SF", stats: { rushYd: 1202, rushTd: 10, rec: 102, recYd: 924, recTd: 7 } },
+  { name: "Puka Nacua", position: "WR", team: "LAR", stats: { rushYd: 105, rushTd: 1, rec: 129, recYd: 1715, recTd: 10, fumbleLost: 1, gamesMissedLastSeason: 1 } },
+  { name: "Bijan Robinson", position: "RB", team: "ATL", stats: { rushYd: 1478, rushTd: 7, rec: 79, recYd: 820, recTd: 4, fumbleLost: 3 } },
+  { name: "Jahmyr Gibbs", position: "RB", team: "DET", stats: { rushYd: 1223, rushTd: 13, rec: 77, recYd: 616, recTd: 5, fumbleLost: 1 } },
+  { name: "Josh Allen", position: "QB", team: "BUF", stats: { passYd: 3668, passTd: 25, passInt: 10, rushYd: 579, rushTd: 14, fumbleLost: 3 } },
+  { name: "Jonathan Taylor", position: "RB", team: "IND", stats: { rushYd: 1585, rushTd: 18, rec: 46, recYd: 378, recTd: 2, fumbleLost: 1 } },
+  { name: "Jaxon Smith-Njigba", position: "WR", team: "SEA", stats: { rushYd: 36, rec: 119, recYd: 1793, recTd: 10, fumbleLost: 1 } },
+  { name: "Drake Maye", position: "QB", team: "NE", stats: { passYd: 4394, passTd: 31, passInt: 8, rushYd: 450, rushTd: 4, rec: 1, recYd: 2, fumbleLost: 3 } },
+  { name: "Matthew Stafford", position: "QB", team: "LAR", stats: { passYd: 4707, passTd: 46, passInt: 8, rushYd: 1, fumbleLost: 3 } },
+  { name: "Trevor Lawrence", position: "QB", team: "JAX", stats: { passYd: 4007, passTd: 29, passInt: 12, rushYd: 359, rushTd: 9, fumbleLost: 3 } },
+  { name: "Amon-Ra St. Brown", position: "WR", team: "DET", stats: { rushYd: 9, rec: 117, recYd: 1401, recTd: 11 } },
+  { name: "De'Von Achane", position: "RB", team: "MIA", stats: { rushYd: 1350, rushTd: 8, rec: 67, recYd: 488, recTd: 4, gamesMissedLastSeason: 1 } },
+  { name: "Trey McBride", position: "TE", team: "ARI", stats: { rec: 126, recYd: 1239, recTd: 11 } },
+  { name: "Dak Prescott", position: "QB", team: "DAL", stats: { passYd: 4552, passTd: 30, passInt: 10, rushYd: 177, rushTd: 2, fumbleLost: 2 } },
+  { name: "Ja'Marr Chase", position: "WR", team: "CIN", stats: { rushYd: 14, rec: 125, recYd: 1412, recTd: 8, fumbleLost: 1, gamesMissedLastSeason: 1 } },
+  { name: "Caleb Williams", position: "QB", team: "CHI", stats: { passYd: 3942, passTd: 27, passInt: 7, rushYd: 383, rushTd: 3, rec: 2, recYd: 22, recTd: 1, fumbleLost: 1 } },
+  { name: "Bo Nix", position: "QB", team: "DEN", stats: { passYd: 3931, passTd: 25, passInt: 11, rushYd: 356, rushTd: 5, fumbleLost: 2 } },
+  { name: "James Cook", position: "RB", team: "BUF", stats: { rushYd: 1621, rushTd: 12, rec: 33, recYd: 291, recTd: 2, fumbleLost: 3 } },
+  { name: "Jalen Hurts", position: "QB", team: "PHI", stats: { passYd: 3224, passTd: 25, passInt: 6, rushYd: 421, rushTd: 8, fumbleLost: 4, gamesMissedLastSeason: 1 } },
+  { name: "Jared Goff", position: "QB", team: "DET", stats: { passYd: 4564, passTd: 34, passInt: 8, rushYd: 45, fumbleLost: 5 } },
+  { name: "George Pickens", position: "WR", team: "DAL", stats: { rec: 93, recYd: 1429, recTd: 9 } },
+  { name: "Justin Herbert", position: "QB", team: "LAC", stats: { passYd: 3727, passTd: 26, passInt: 13, rushYd: 498, rushTd: 2, fumbleLost: 2, gamesMissedLastSeason: 1 } },
+  { name: "Patrick Mahomes", position: "QB", team: "KC", stats: { passYd: 3587, passTd: 22, passInt: 11, rushYd: 422, rushTd: 5, rec: 1, recYd: -10, gamesMissedLastSeason: 3 } },
+  { name: "Chase Brown", position: "RB", team: "CIN", stats: { rushYd: 1019, rushTd: 6, rec: 69, recYd: 437, recTd: 5 } },
+  { name: "Derrick Henry", position: "RB", team: "BAL", stats: { rushYd: 1595, rushTd: 16, rec: 15, recYd: 150, fumbleLost: 3 } },
+  { name: "Baker Mayfield", position: "QB", team: "TB", stats: { passYd: 3693, passTd: 26, passInt: 11, rushYd: 382, rushTd: 1, fumbleLost: 3 } },
+  { name: "Chris Olave", position: "WR", team: "NO", stats: { passInt: 1, rushYd: -3, rec: 100, recYd: 1163, recTd: 9, gamesMissedLastSeason: 1 } },
+  { name: "Kyren Williams", position: "RB", team: "LAR", stats: { rushYd: 1252, rushTd: 10, rec: 36, recYd: 281, recTd: 3, fumbleLost: 2 } },
+  { name: "Travis Etienne Jr.", position: "RB", team: "JAX", stats: { rushYd: 1107, rushTd: 7, rec: 36, recYd: 292, recTd: 6 } },
+  { name: "Ashton Jeanty", position: "RB", team: "LV", stats: { rushYd: 975, rushTd: 5, rec: 55, recYd: 346, recTd: 5, fumbleLost: 1 } },
+  { name: "Zay Flowers", position: "WR", team: "BAL", stats: { rushYd: 62, rushTd: 1, rec: 86, recYd: 1211, recTd: 5, fumbleLost: 3 } },
+  { name: "Javonte Williams", position: "RB", team: "DAL", stats: { rushYd: 1201, rushTd: 11, rec: 35, recYd: 137, recTd: 2, fumbleLost: 2, gamesMissedLastSeason: 1 } },
+  { name: "Jaxson Dart", position: "QB", team: "NYG", stats: { passYd: 2272, passTd: 15, passInt: 5, rushYd: 487, rushTd: 9, fumbleLost: 2, gamesMissedLastSeason: 3 } },
+  { name: "Josh Jacobs", position: "RB", team: "GB", stats: { rushYd: 929, rushTd: 13, rec: 36, recYd: 282, recTd: 1, fumbleLost: 2, gamesMissedLastSeason: 2 } },
+  { name: "Sam Darnold", position: "QB", team: "SEA", stats: { passYd: 4048, passTd: 25, passInt: 14, rushYd: 95, fumbleLost: 6 } },
+  { name: "Jordan Love", position: "QB", team: "GB", stats: { passYd: 3381, passTd: 23, passInt: 6, rushYd: 199, fumbleLost: 2, gamesMissedLastSeason: 2 } },
+  { name: "Saquon Barkley", position: "RB", team: "PHI", stats: { rushYd: 1140, rushTd: 7, rec: 37, recYd: 273, recTd: 2, fumbleLost: 1, gamesMissedLastSeason: 1 } },
+  { name: "D'Andre Swift", position: "RB", team: "CHI", stats: { rushYd: 1087, rushTd: 9, rec: 34, recYd: 299, recTd: 1, fumbleLost: 2, gamesMissedLastSeason: 1 } },
+  { name: "Jacoby Brissett", position: "QB", team: "ARI", stats: { passYd: 3366, passTd: 23, passInt: 8, rushYd: 168, rushTd: 1, fumbleLost: 4, gamesMissedLastSeason: 3 } },
+  { name: "Aaron Rodgers", position: "QB", team: "PIT", stats: { passYd: 3322, passTd: 24, passInt: 7, rushYd: 61, rushTd: 1, rec: 1, recYd: -9, fumbleLost: 1, gamesMissedLastSeason: 1 } },
+  { name: "Daniel Jones", position: "QB", team: "IND", stats: { passYd: 3101, passTd: 19, passInt: 8, rushYd: 164, rushTd: 5, fumbleLost: 3, gamesMissedLastSeason: 4 } },
+  { name: "Nico Collins", position: "WR", team: "HOU", stats: { rushYd: 15, rushTd: 1, rec: 71, recYd: 1117, recTd: 6, fumbleLost: 1, gamesMissedLastSeason: 2 } },
+  { name: "Davante Adams", position: "WR", team: "LAR", stats: { rec: 60, recYd: 789, recTd: 14, gamesMissedLastSeason: 3 } },
+  { name: "Kenneth Gainwell", position: "RB", team: "PIT", stats: { rushYd: 537, rushTd: 5, rec: 73, recYd: 486, recTd: 3, fumbleLost: 1 } },
+  { name: "Michael Wilson", position: "WR", team: "ARI", stats: { rec: 78, recYd: 1006, recTd: 7 } },
+  { name: "A.J. Brown", position: "WR", team: "PHI", stats: { rec: 78, recYd: 1003, recTd: 7, gamesMissedLastSeason: 2 } },
+  { name: "Jameson Williams", position: "WR", team: "DET", stats: { rushYd: 12, rec: 65, recYd: 1117, recTd: 7 } },
+  { name: "Courtland Sutton", position: "WR", team: "DEN", stats: { rec: 74, recYd: 1017, recTd: 7 } },
+  { name: "Bryce Young", position: "QB", team: "CAR", stats: { passYd: 3011, passTd: 23, passInt: 11, rushYd: 216, rushTd: 2, fumbleLost: 4, gamesMissedLastSeason: 1 } },
+  { name: "Wan'Dale Robinson", position: "WR", team: "NYG", stats: { rushYd: 5, rec: 92, recYd: 1014, recTd: 4, gamesMissedLastSeason: 1 } },
+  { name: "Jaylen Warren", position: "RB", team: "PIT", stats: { rushYd: 958, rushTd: 6, rec: 40, recYd: 333, recTd: 2, gamesMissedLastSeason: 1 } },
+  { name: "Rico Dowdle", position: "RB", team: "CAR", stats: { rushYd: 1076, rushTd: 6, rec: 39, recYd: 297, recTd: 1, fumbleLost: 1 } },
+  { name: "Lamar Jackson", position: "QB", team: "BAL", stats: { passYd: 2549, passTd: 21, passInt: 7, rushYd: 349, rushTd: 2, fumbleLost: 3, gamesMissedLastSeason: 4 } },
+  { name: "Tee Higgins", position: "WR", team: "CIN", stats: { rec: 59, recYd: 846, recTd: 11, gamesMissedLastSeason: 2 } },
+  { name: "Tetairoa McMillan", position: "WR", team: "CAR", stats: { rec: 70, recYd: 1014, recTd: 7, fumbleLost: 1 } },
+  { name: "Kyle Pitts Sr.", position: "TE", team: "ATL", stats: { rec: 88, recYd: 928, recTd: 5 } },
+  { name: "Stefon Diggs", position: "WR", team: "NE", stats: { rec: 85, recYd: 1013, recTd: 4 } },
+  { name: "C.J. Stroud", position: "QB", team: "HOU", stats: { passYd: 3041, passTd: 19, passInt: 8, rushYd: 209, rushTd: 1, gamesMissedLastSeason: 3 } },
+  { name: "RJ Harvey", position: "RB", team: "DEN", stats: { rushYd: 540, rushTd: 7, rec: 47, recYd: 356, recTd: 5, fumbleLost: 1 } },
+  { name: "TreVeyon Henderson", position: "RB", team: "NE", stats: { rushYd: 911, rushTd: 9, rec: 35, recYd: 221, recTd: 1, fumbleLost: 1 } },
+  { name: "Breece Hall", position: "RB", team: "NYJ", stats: { passYd: 4, passTd: 1, rushYd: 1065, rushTd: 4, rec: 36, recYd: 350, recTd: 1, fumbleLost: 2, gamesMissedLastSeason: 1 } },
+  { name: "Michael Pittman Jr.", position: "WR", team: "IND", stats: { rec: 80, recYd: 784, recTd: 7 } },
+  { name: "Drake London", position: "WR", team: "ATL", stats: { rec: 68, recYd: 919, recTd: 7, fumbleLost: 1, gamesMissedLastSeason: 5 } },
+  { name: "DeVonta Smith", position: "WR", team: "PHI", stats: { rec: 77, recYd: 1008, recTd: 4 } },
+  { name: "Justin Jefferson", position: "WR", team: "MIN", stats: { rushYd: 7, rec: 84, recYd: 1048, recTd: 2 } },
+  { name: "CeeDee Lamb", position: "WR", team: "DAL", stats: { rushYd: 2, rec: 75, recYd: 1077, recTd: 3, gamesMissedLastSeason: 3 } },
+  { name: "Emeka Egbuka", position: "WR", team: "TB", stats: { rushYd: 9, rec: 63, recYd: 938, recTd: 6 } },
+  { name: "Jaylen Waddle", position: "WR", team: "MIA", stats: { passYd: 8, rushYd: 28, rec: 64, recYd: 910, recTd: 6, gamesMissedLastSeason: 1 } },
+  { name: "Travis Kelce", position: "TE", team: "KC", stats: { rushYd: 1, rec: 76, recYd: 851, recTd: 5 } },
+  { name: "Kenneth Walker III", position: "RB", team: "SEA", stats: { rushYd: 1027, rushTd: 5, rec: 31, recYd: 282 } },
+  { name: "Tyler Warren", position: "TE", team: "IND", stats: { rushYd: 8, rushTd: 1, rec: 76, recYd: 817, recTd: 4 } },
+  { name: "Deebo Samuel Sr.", position: "WR", team: "WAS", stats: { rushYd: 75, rushTd: 1, rec: 72, recYd: 727, recTd: 5, gamesMissedLastSeason: 1 } },
+  { name: "Jake Ferguson", position: "TE", team: "DAL", stats: { rushYd: 1, rec: 82, recYd: 600, recTd: 8, fumbleLost: 2 } },
+  { name: "DK Metcalf", position: "WR", team: "PIT", stats: { rushYd: 12, rushTd: 1, rec: 59, recYd: 850, recTd: 6, gamesMissedLastSeason: 2 } },
+  { name: "Cameron Ward", position: "QB", team: "TEN", stats: { passYd: 3169, passTd: 15, passInt: 7, rushYd: 159, rushTd: 2, fumbleLost: 7 } },
+  { name: "Harold Fannin Jr.", position: "TE", team: "CLE", stats: { rushYd: 13, rushTd: 1, rec: 72, recYd: 731, recTd: 6, fumbleLost: 1, gamesMissedLastSeason: 1 } },
+  { name: "Tony Pollard", position: "RB", team: "TEN", stats: { rushYd: 1082, rushTd: 5, rec: 33, recYd: 206, fumbleLost: 3 } },
+  { name: "Dallas Goedert", position: "TE", team: "PHI", stats: { rec: 60, recYd: 591, recTd: 11, gamesMissedLastSeason: 2 } },
+  { name: "Alec Pierce", position: "WR", team: "IND", stats: { rec: 47, recYd: 1003, recTd: 6, gamesMissedLastSeason: 2 } },
+  { name: "Keenan Allen", position: "WR", team: "LAC", stats: { rec: 81, recYd: 777, recTd: 4 } },
+  { name: "Zach Charbonnet", position: "RB", team: "SEA", stats: { rushYd: 730, rushTd: 12, rec: 20, recYd: 144, gamesMissedLastSeason: 1 } },
+  { name: "Ladd McConkey", position: "WR", team: "LAC", stats: { rec: 66, recYd: 789, recTd: 6, gamesMissedLastSeason: 1 } },
+  { name: "Juwan Johnson", position: "TE", team: "NO", stats: { rec: 77, recYd: 889, recTd: 3, fumbleLost: 2 } },
+  { name: "Hunter Henry", position: "TE", team: "NE", stats: { rec: 60, recYd: 768, recTd: 7 } },
+  { name: "Rhamondre Stevenson", position: "RB", team: "NE", stats: { rushYd: 603, rushTd: 7, rec: 32, recYd: 345, recTd: 2, fumbleLost: 3, gamesMissedLastSeason: 3 } },
+  { name: "Dalton Schultz", position: "TE", team: "HOU", stats: { rec: 82, recYd: 777, recTd: 3 } },
+  { name: "Brock Purdy", position: "QB", team: "SF", stats: { passYd: 2167, passTd: 20, passInt: 10, rushYd: 147, rushTd: 3, fumbleLost: 2, gamesMissedLastSeason: 8 } },
+  { name: "Troy Franklin", position: "WR", team: "DEN", stats: { rushYd: 12, rec: 65, recYd: 709, recTd: 6, fumbleLost: 1 } },
+  { name: "Brock Bowers", position: "TE", team: "LV", stats: { rushYd: 2, rec: 64, recYd: 680, recTd: 7, gamesMissedLastSeason: 5 } },
+  { name: "Jakobi Meyers", position: "WR", team: "LV", stats: { rushYd: 13, rec: 75, recYd: 835, recTd: 3, fumbleLost: 1, gamesMissedLastSeason: 1 } },
+  { name: "Geno Smith", position: "QB", team: "LV", stats: { passYd: 3025, passTd: 19, passInt: 17, rushYd: 109, fumbleLost: 1, gamesMissedLastSeason: 2 } },
+  { name: "Jauan Jennings", position: "WR", team: "SF", stats: { rec: 55, recYd: 643, recTd: 9, fumbleLost: 1, gamesMissedLastSeason: 2 } },
+  { name: "Parker Washington", position: "WR", team: "JAX", stats: { rec: 58, recYd: 847, recTd: 5, gamesMissedLastSeason: 1 } },
+  { name: "Quentin Johnston", position: "WR", team: "LAC", stats: { rushYd: 7, rec: 51, recYd: 735, recTd: 8, fumbleLost: 1, gamesMissedLastSeason: 3 } },
+  { name: "Quinshon Judkins", position: "RB", team: "CLE", stats: { rushYd: 827, rushTd: 7, rec: 26, recYd: 171, gamesMissedLastSeason: 3 } },
+  { name: "Khalil Shakir", position: "WR", team: "BUF", stats: { rushYd: 5, rec: 72, recYd: 719, recTd: 4, fumbleLost: 1, gamesMissedLastSeason: 1 } },
+  { name: "DJ Moore", position: "WR", team: "CHI", stats: { passYd: 2, passTd: 1, rushYd: 79, rushTd: 1, rec: 50, recYd: 682, recTd: 6, fumbleLost: 1 } },
+  { name: "Romeo Doubs", position: "WR", team: "GB", stats: { rec: 55, recYd: 724, recTd: 6, gamesMissedLastSeason: 1 } },
+  { name: "Colston Loveland", position: "TE", team: "CHI", stats: { rushYd: -2, rec: 58, recYd: 713, recTd: 6, gamesMissedLastSeason: 1 } },
+  { name: "David Montgomery", position: "RB", team: "DET", stats: { passYd: 3, passTd: 1, rushYd: 716, rushTd: 8, rec: 24, recYd: 192, fumbleLost: 1 } },
+  { name: "Tre Tucker", position: "WR", team: "LV", stats: { rushYd: 51, rec: 57, recYd: 696, recTd: 5 } },
+  { name: "George Kittle", position: "TE", team: "SF", stats: { rushYd: -3, rec: 57, recYd: 628, recTd: 7, gamesMissedLastSeason: 6 } },
+  { name: "Tyrone Tracy Jr.", position: "RB", team: "NYG", stats: { rushYd: 740, rushTd: 2, rec: 36, recYd: 288, recTd: 2, fumbleLost: 1, gamesMissedLastSeason: 2 } },
+  { name: "Tua Tagovailoa", position: "QB", team: "MIA", stats: { passYd: 2660, passTd: 20, passInt: 15, rushYd: 43, fumbleLost: 1, gamesMissedLastSeason: 3 } },
+  { name: "Tyler Shough", position: "QB", team: "NO", stats: { passYd: 2384, passTd: 10, passInt: 6, rushYd: 186, rushTd: 3, fumbleLost: 2, gamesMissedLastSeason: 6 } },
+  { name: "Woody Marks", position: "RB", team: "HOU", stats: { rushYd: 703, rushTd: 3, rec: 24, recYd: 208, recTd: 3, gamesMissedLastSeason: 1 } },
+  { name: "Rashee Rice", position: "WR", team: "KC", stats: { rushYd: 20, rushTd: 1, rec: 53, recYd: 571, recTd: 5, gamesMissedLastSeason: 9 } },
+  { name: "AJ Barner", position: "TE", team: "SEA", stats: { rushYd: 14, rushTd: 1, rec: 52, recYd: 519, recTd: 6 } },
+  { name: "Kyle Monangai", position: "RB", team: "CHI", stats: { rushYd: 783, rushTd: 5, rec: 18, recYd: 164 } },
+  { name: "Joe Flacco", position: "QB", team: "CLE", stats: { passYd: 2479, passTd: 15, passInt: 10, rushYd: 35, rushTd: 1, fumbleLost: 3, gamesMissedLastSeason: 4 } },
+  { name: "Rome Odunze", position: "WR", team: "CHI", stats: { rec: 44, recYd: 661, recTd: 6, gamesMissedLastSeason: 5 } },
+  { name: "Kareem Hunt", position: "RB", team: "KC", stats: { rushYd: 612, rushTd: 8, rec: 18, recYd: 143, recTd: 1, fumbleLost: 1 } },
+  { name: "Rashid Shaheed", position: "WR", team: "NO", stats: { rushYd: 69, rec: 59, recYd: 687, recTd: 2, fumbleLost: 1 } },
+  { name: "Rachaad White", position: "RB", team: "TB", stats: { rushYd: 572, rushTd: 4, rec: 40, recYd: 218 } },
+  { name: "Justin Fields", position: "QB", team: "NYJ", stats: { passYd: 1259, passTd: 7, passInt: 1, rushYd: 383, rushTd: 4, fumbleLost: 3, gamesMissedLastSeason: 8 } },
+  { name: "Jacory Croskey-Merritt", position: "RB", team: "WAS", stats: { rushYd: 805, rushTd: 8, rec: 9, recYd: 68, fumbleLost: 2 } },
+  { name: "Brian Thomas Jr.", position: "WR", team: "JAX", stats: { rushYd: 21, rushTd: 1, rec: 48, recYd: 707, recTd: 2, gamesMissedLastSeason: 3 } },
+  { name: "Bucky Irving", position: "RB", team: "TB", stats: { rushYd: 588, rushTd: 1, rec: 30, recYd: 277, recTd: 3, fumbleLost: 1, gamesMissedLastSeason: 7 } },
+  { name: "Marquise Brown", position: "WR", team: "KC", stats: { rec: 49, recYd: 587, recTd: 5, gamesMissedLastSeason: 1 } },
+  { name: "Josh Downs", position: "WR", team: "IND", stats: { rushYd: -2, rec: 58, recYd: 566, recTd: 4, fumbleLost: 1, gamesMissedLastSeason: 1 } },
+  { name: "Omarion Hampton", position: "RB", team: "LAC", stats: { rushYd: 545, rushTd: 4, rec: 32, recYd: 192, recTd: 1, gamesMissedLastSeason: 8 } },
+  { name: "Jordan Addison", position: "WR", team: "MIN", stats: { rushYd: 81, rushTd: 1, rec: 42, recYd: 610, recTd: 3, gamesMissedLastSeason: 3 } },
+  { name: "Joe Burrow", position: "QB", team: "CIN", stats: { passYd: 1809, passTd: 17, passInt: 5, rushYd: 41, gamesMissedLastSeason: 9 } },
+  { name: "Christian Watson", position: "WR", team: "GB", stats: { rushYd: 3, rec: 35, recYd: 611, recTd: 6, gamesMissedLastSeason: 7 } },
+  { name: "Oronde Gadsden", position: "TE", team: "LAC", stats: { rec: 49, recYd: 664, recTd: 3, fumbleLost: 1, gamesMissedLastSeason: 2 } },
+  { name: "Mark Andrews", position: "TE", team: "BAL", stats: { rushYd: 48, rushTd: 1, rec: 48, recYd: 422, recTd: 5 } },
+  { name: "Mac Jones", position: "QB", team: "SF", stats: { passYd: 2151, passTd: 13, passInt: 6, rushYd: 60, fumbleLost: 2, gamesMissedLastSeason: 6 } },
+  { name: "Colby Parkinson", position: "TE", team: "LAR", stats: { rec: 43, recYd: 408, recTd: 8, fumbleLost: 1, gamesMissedLastSeason: 2 } },
+  { name: "Jayden Higgins", position: "WR", team: "HOU", stats: { rec: 41, recYd: 525, recTd: 6 } },
+  { name: "Jordan Mason", position: "RB", team: "MIN", stats: { rushYd: 758, rushTd: 6, rec: 14, recYd: 51, fumbleLost: 1, gamesMissedLastSeason: 1 } },
+  { name: "Luther Burden III", position: "WR", team: "CHI", stats: { rushYd: 37, rec: 47, recYd: 652, recTd: 2, gamesMissedLastSeason: 2 } },
+  { name: "Theo Johnson", position: "TE", team: "NYG", stats: { rec: 45, recYd: 528, recTd: 5, gamesMissedLastSeason: 2 } },
+  { name: "Marvin Harrison Jr.", position: "WR", team: "ARI", stats: { rec: 41, recYd: 608, recTd: 4, gamesMissedLastSeason: 5 } },
+  { name: "Cam Skattebo", position: "RB", team: "NYG", stats: { rushYd: 410, rushTd: 5, rec: 24, recYd: 207, recTd: 2, fumbleLost: 1, gamesMissedLastSeason: 9 } },
+  { name: "Zach Ertz", position: "TE", team: "WAS", stats: { rec: 50, recYd: 504, recTd: 4, gamesMissedLastSeason: 4 } },
+  { name: "Dalton Kincaid", position: "TE", team: "BUF", stats: { rec: 39, recYd: 571, recTd: 5, gamesMissedLastSeason: 5 } },
+  { name: "Marcus Mariota", position: "QB", team: "WAS", stats: { passYd: 1695, passTd: 10, passInt: 7, rushYd: 297, rushTd: 1, fumbleLost: 3, gamesMissedLastSeason: 6 } },
+  { name: "Chuba Hubbard", position: "RB", team: "CAR", stats: { rushYd: 511, rushTd: 1, rec: 30, recYd: 223, recTd: 3, fumbleLost: 1, gamesMissedLastSeason: 2 } },
+  { name: "J.J. McCarthy", position: "QB", team: "MIN", stats: { passYd: 1632, passTd: 11, passInt: 12, rushYd: 181, rushTd: 4, fumbleLost: 2, gamesMissedLastSeason: 7 } },
+  { name: "Kayshon Boutte", position: "WR", team: "NE", stats: { rec: 33, recYd: 551, recTd: 6, gamesMissedLastSeason: 3 } },
+  { name: "Chig Okonkwo", position: "TE", team: "TEN", stats: { rec: 56, recYd: 560, recTd: 2 } },
+  { name: "Tyler Allgeier", position: "RB", team: "ATL", stats: { rushYd: 514, rushTd: 8, rec: 14, recYd: 96 } },
+  { name: "Cade Otton", position: "TE", team: "TB", stats: { rec: 59, recYd: 572, recTd: 1, gamesMissedLastSeason: 1 } },
+  { name: "Blake Corum", position: "RB", team: "LAR", stats: { rushYd: 746, rushTd: 6, rec: 8, recYd: 36 } },
+  { name: "Jerry Jeudy", position: "WR", team: "CLE", stats: { rushYd: 5, rec: 50, recYd: 602, recTd: 2, fumbleLost: 1 } },
+  { name: "Michael Penix Jr.", position: "QB", team: "ATL", stats: { passYd: 1982, passTd: 9, passInt: 3, rushYd: 70, rushTd: 1, fumbleLost: 2, gamesMissedLastSeason: 8 } },
+  { name: "Aaron Jones Sr.", position: "RB", team: "MIN", stats: { rushYd: 548, rushTd: 2, rec: 28, recYd: 199, recTd: 1, fumbleLost: 1, gamesMissedLastSeason: 5 } },
+  { name: "Cooper Kupp", position: "WR", team: "SEA", stats: { passInt: 1, rec: 47, recYd: 593, recTd: 2, fumbleLost: 1, gamesMissedLastSeason: 1 } },
+  { name: "Brenton Strange", position: "TE", team: "JAX", stats: { rec: 46, recYd: 540, recTd: 3, gamesMissedLastSeason: 5 } },
+  { name: "Kimani Vidal", position: "RB", team: "LAC", stats: { rushYd: 643, rushTd: 3, rec: 16, recYd: 136, recTd: 1, gamesMissedLastSeason: 4 } },
+  { name: "Tucker Kraft", position: "TE", team: "GB", stats: { rushYd: 3, rec: 32, recYd: 489, recTd: 6, gamesMissedLastSeason: 9 } },
+  { name: "Elic Ayomanor", position: "WR", team: "TEN", stats: { rec: 41, recYd: 515, recTd: 4, gamesMissedLastSeason: 1 } },
+  { name: "J.K. Dobbins", position: "RB", team: "DEN", stats: { rushYd: 772, rushTd: 4, rec: 11, recYd: 37, gamesMissedLastSeason: 7 } },
+  { name: "Jayden Daniels", position: "QB", team: "WAS", stats: { passYd: 1262, passTd: 8, passInt: 3, rushYd: 278, rushTd: 2, fumbleLost: 2, gamesMissedLastSeason: 10 } },
+  { name: "Terry McLaurin", position: "WR", team: "WAS", stats: { rec: 38, recYd: 582, recTd: 3, gamesMissedLastSeason: 7 } },
+  { name: "Chimere Dike", position: "WR", team: "TEN", stats: { rushYd: 18, rec: 48, recYd: 423, recTd: 4, fumbleLost: 1 } },
+  { name: "Ryan Flournoy", position: "WR", team: "DAL", stats: { rushYd: 25, rec: 40, recYd: 475, recTd: 4, gamesMissedLastSeason: 1 } },
+  { name: "Pat Freiermuth", position: "TE", team: "PIT", stats: { rec: 41, recYd: 486, recTd: 4 } },
+  { name: "Mack Hollins", position: "WR", team: "NE", stats: { rushYd: 4, rec: 46, recYd: 550, recTd: 2, gamesMissedLastSeason: 2 } },
+  { name: "T.J. Hockenson", position: "TE", team: "MIN", stats: { rec: 51, recYd: 438, recTd: 3, gamesMissedLastSeason: 2 } },
+  { name: "Tyjae Spears", position: "RB", team: "TEN", stats: { rushYd: 283, rushTd: 2, rec: 45, recYd: 264, gamesMissedLastSeason: 4 } },
+  { name: "Malik Washington", position: "WR", team: "MIA", stats: { rushYd: 110, rushTd: 1, rec: 46, recYd: 317, recTd: 3, fumbleLost: 1 } },
+  { name: "Xavier Worthy", position: "WR", team: "KC", stats: { rushYd: 87, rec: 42, recYd: 532, recTd: 1, gamesMissedLastSeason: 3 } },
+  { name: "Devin Singletary", position: "RB", team: "NYG", stats: { rushYd: 437, rushTd: 5, rec: 18, recYd: 151 } },
+  { name: "Sam LaPorta", position: "TE", team: "DET", stats: { rec: 40, recYd: 489, recTd: 3, gamesMissedLastSeason: 8 } },
+  { name: "Dawson Knox", position: "TE", team: "BUF", stats: { rec: 36, recYd: 417, recTd: 4 } },
+  { name: "Kirk Cousins", position: "QB", team: "ATL", stats: { passYd: 1721, passTd: 10, passInt: 5, rushYd: 7, rushTd: 1, fumbleLost: 1, gamesMissedLastSeason: 6 } },
+  { name: "Evan Engram", position: "TE", team: "DEN", stats: { rushYd: 7, rec: 50, recYd: 461, recTd: 1, gamesMissedLastSeason: 1 } },
+  { name: "Keon Coleman", position: "WR", team: "BUF", stats: { rec: 38, recYd: 404, recTd: 4, fumbleLost: 1, gamesMissedLastSeason: 4 } },
+  { name: "Jalen Nailor", position: "WR", team: "MIN", stats: { rushYd: 13, rec: 29, recYd: 444, recTd: 4 } },
+  { name: "Alvin Kamara", position: "RB", team: "NO", stats: { rushYd: 471, rushTd: 1, rec: 33, recYd: 186, fumbleLost: 2, gamesMissedLastSeason: 6 } },
+  { name: "Ty Johnson", position: "RB", team: "BUF", stats: { rushYd: 200, rushTd: 3, rec: 24, recYd: 263, recTd: 2 } },
+  { name: "Garrett Wilson", position: "WR", team: "NYJ", stats: { rec: 36, recYd: 395, recTd: 4, gamesMissedLastSeason: 10 } },
+  { name: "Michael Carter", position: "RB", team: "ARI", stats: { rushYd: 333, rushTd: 1, rec: 33, recYd: 267, gamesMissedLastSeason: 4 } },
+  { name: "Darius Slayton", position: "WR", team: "NYG", stats: { rec: 37, recYd: 538, recTd: 1, fumbleLost: 1, gamesMissedLastSeason: 3 } },
+  { name: "Spencer Rattler", position: "QB", team: "NO", stats: { passYd: 1586, passTd: 8, passInt: 5, rushYd: 167, rec: 1, fumbleLost: 2, gamesMissedLastSeason: 8 } },
+  { name: "Xavier Hutchinson", position: "WR", team: "HOU", stats: { rushYd: 22, rec: 35, recYd: 428, recTd: 3 } },
+  { name: "DeMario Douglas", position: "WR", team: "NE", stats: { rushYd: 21, rec: 31, recYd: 447, recTd: 3 } },
+  { name: "Emanuel Wilson", position: "RB", team: "GB", stats: { rushYd: 496, rushTd: 3, rec: 15, recYd: 99 } },
+  { name: "Jake Tonges", position: "TE", team: "SF", stats: { rec: 34, recYd: 293, recTd: 5 } },
+  { name: "Bam Knight", position: "RB", team: "ARI", stats: { rushYd: 269, rushTd: 4, rec: 22, recYd: 160, recTd: 1, fumbleLost: 1, gamesMissedLastSeason: 5 } },
+  { name: "Tez Johnson", position: "WR", team: "TB", stats: { rushYd: 24, rec: 28, recYd: 322, recTd: 5, gamesMissedLastSeason: 1 } },
+  { name: "Kendrick Bourne", position: "WR", team: "SF", stats: { rec: 37, recYd: 551, gamesMissedLastSeason: 1 } },
+  { name: "Chris Rodriguez Jr.", position: "RB", team: "WAS", stats: { rushYd: 500, rushTd: 6, rec: 3, recYd: 30, gamesMissedLastSeason: 4 } },
+  { name: "Gunnar Helm", position: "TE", team: "TEN", stats: { rec: 44, recYd: 357, recTd: 2, gamesMissedLastSeason: 1 } },
+  { name: "Sean Tucker", position: "RB", team: "TB", stats: { rushYd: 320, rushTd: 7, rec: 8, recYd: 34, recTd: 1 } },
+  { name: "Jalen Coker", position: "WR", team: "CAR", stats: { rec: 33, recYd: 394, recTd: 3, fumbleLost: 1, gamesMissedLastSeason: 6 } },
+  { name: "Andrei Iosivas", position: "WR", team: "CIN", stats: { rushYd: 14, rec: 33, recYd: 435, recTd: 2 } },
+  { name: "Adonai Mitchell", position: "WR", team: "IND", stats: { rushYd: -4, rec: 33, recYd: 453, recTd: 2, gamesMissedLastSeason: 1 } },
+  { name: "Xavier Legette", position: "WR", team: "CAR", stats: { rec: 35, recYd: 363, recTd: 3, gamesMissedLastSeason: 2 } },
+  { name: "Mason Taylor", position: "TE", team: "NYJ", stats: { rec: 44, recYd: 369, recTd: 1, gamesMissedLastSeason: 4 } },
+  { name: "Darren Waller", position: "TE", team: "MIA", stats: { rushYd: 4, rec: 24, recYd: 283, recTd: 6, gamesMissedLastSeason: 8 } },
+  { name: "Bhayshul Tuten", position: "RB", team: "JAX", stats: { rushYd: 307, rushTd: 5, rec: 10, recYd: 79, recTd: 2, fumbleLost: 1, gamesMissedLastSeason: 2 } },
+  { name: "Ricky Pearsall", position: "WR", team: "SF", stats: { rushYd: -2, rec: 36, recYd: 528, gamesMissedLastSeason: 8 } },
+  { name: "Nick Chubb", position: "RB", team: "HOU", stats: { rushYd: 506, rushTd: 3, rec: 13, recYd: 67, gamesMissedLastSeason: 2 } },
+  { name: "Dylan Sampson", position: "RB", team: "CLE", stats: { rushYd: 175, rec: 33, recYd: 271, recTd: 2, fumbleLost: 1, gamesMissedLastSeason: 2 } },
+  { name: "Isiah Pacheco", position: "RB", team: "KC", stats: { rushYd: 461, rushTd: 1, rec: 19, recYd: 101, recTd: 1, gamesMissedLastSeason: 4 } },
+  { name: "Marvin Mims Jr.", position: "WR", team: "DEN", stats: { rushYd: 78, rushTd: 1, rec: 37, recYd: 322, recTd: 1, fumbleLost: 1, gamesMissedLastSeason: 2 } },
+  { name: "David Njoku", position: "TE", team: "CLE", stats: { rec: 33, recYd: 293, recTd: 4, gamesMissedLastSeason: 5 } },
+  { name: "Calvin Austin III", position: "WR", team: "PIT", stats: { rec: 31, recYd: 372, recTd: 3, gamesMissedLastSeason: 3 } },
+  { name: "Jonnu Smith", position: "TE", team: "PIT", stats: { rushYd: 70, rushTd: 1, rec: 38, recYd: 222, recTd: 2 } },
+  { name: "Shedeur Sanders", position: "QB", team: "CLE", stats: { passYd: 1400, passTd: 7, passInt: 10, rushYd: 169, rushTd: 1, fumbleLost: 1, gamesMissedLastSeason: 9 } },
+  { name: "Mike Evans", position: "WR", team: "TB", stats: { rec: 30, recYd: 368, recTd: 3, gamesMissedLastSeason: 9 } },
+  { name: "Olamide Zaccheaus", position: "WR", team: "CHI", stats: { rushYd: 25, rec: 39, recYd: 313, recTd: 2, gamesMissedLastSeason: 1 } },
+  { name: "KaVontae Turpin", position: "WR", team: "DAL", stats: { rushYd: 89, rec: 26, recYd: 396, recTd: 2, fumbleLost: 1, gamesMissedLastSeason: 2 } },
+  { name: "Chris Godwin", position: "WR", team: "TB", stats: { rec: 33, recYd: 360, recTd: 2, gamesMissedLastSeason: 8 } },
+  { name: "Darnell Mooney", position: "WR", team: "ATL", stats: { rec: 32, recYd: 443, recTd: 1, gamesMissedLastSeason: 2 } },
+  { name: "Sterling Shepard", position: "WR", team: "TB", stats: { rushYd: 19, rec: 39, recYd: 371, recTd: 1, fumbleLost: 1, gamesMissedLastSeason: 4 } },
+  { name: "Tyquan Thornton", position: "WR", team: "KC", stats: { rec: 19, recYd: 438, recTd: 3, gamesMissedLastSeason: 3 } },
+  { name: "Cole Kmet", position: "TE", team: "CHI", stats: { rec: 30, recYd: 347, recTd: 2, gamesMissedLastSeason: 1 } },
+  { name: "Samaje Perine", position: "RB", team: "CIN", stats: { rushYd: 382, rushTd: 3, rec: 17, recYd: 87, fumbleLost: 2, gamesMissedLastSeason: 2 } },
+  { name: "Kyler Murray", position: "QB", team: "ARI", stats: { passYd: 962, passTd: 6, passInt: 3, rushYd: 173, rushTd: 1, fumbleLost: 1, gamesMissedLastSeason: 12 } },
+  { name: "Isaac TeSlaa", position: "WR", team: "DET", stats: { rec: 16, recYd: 239, recTd: 6 } },
+
+];
+
+const statsByKey = new Map<string, StatProjection>(
+  REAL_2025_STATS.map((e) => [normalizeName(e.name), e.stats])
+);
+
+/** Real 2025 stat line for a player by name, or null if not in the bundle. */
+export function getReal2025Stats(name: string): StatProjection | null {
+  return statsByKey.get(normalizeName(name)) ?? null;
+}
