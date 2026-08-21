@@ -160,8 +160,10 @@ export function SettingsPanel({ league, onChange }: Props) {
               min={1}
             />
             <p className="mt-1 text-xs text-muted">
-              Sleeper&rsquo;s full player list runs to a couple thousand names — most are practice-squad or deep-inactive
-              players no redraft league will ever start. Clear the field to show every synced player instead.
+              Sleeper-synced players also have to appear on a bundled real 2026 superflex/2QB PPR reference list to
+              show up at all (see Methodology) — this cutoff is a second layer on top of that, and the only one that
+              applies to CSV-imported players. Clear the field to show everyone the reference list and your own
+              imports allow.
             </p>
           </div>
 
