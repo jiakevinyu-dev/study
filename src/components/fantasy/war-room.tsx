@@ -28,6 +28,7 @@ import {
   saveWatchlist,
   type DraftPosition,
 } from "@/lib/fantasy/storage";
+import { getReferenceRank, isInReferenceList } from "@/lib/fantasy/reference-rankings";
 import { DEFAULT_LEAGUE, type DefenseRating, type LeagueSettings, type Player, type ScheduleEntry } from "@/lib/fantasy/types";
 import { DataImportPanel } from "./data-import-panel";
 import { Methodology } from "./methodology";
@@ -133,22 +134,32 @@ export function WarRoom() {
   // levels for the position they'd otherwise occupy. Kept around separately
   // (by id, from the raw pool) purely so the UI can offer an undo.
   //
-  // A relevance cutoff (default: ADP/search_rank worse than 250) is applied
-  // the same way: Sleeper's full player dump runs to a couple thousand
-  // names, most of them practice-squad, deep-inactive, or stale/misflagged
-  // (retired players Sleeper's `active` flag didn't catch) entries no
-  // redraft league will ever start, and that long tail is exactly what let
-  // a single real standout at a position get merged into a "Tier 1"
-  // alongside hundreds of irrelevant players. `undefined` (old localStorage
-  // saved before this setting existed) falls back to the same default as a
-  // fresh league. Anyone already on your roster or off the board stays
-  // visible regardless — the cutoff only prunes the *unrostered* pool.
+  // Sleeper-sourced players (the raw /players/nfl dump, thousands of names)
+  // additionally have to appear on the bundled real-world reference list
+  // (reference-rankings.ts — a human-curated 2026 superflex/2QB PPR
+  // consensus snapshot) to make the board at all. That's a hard,
+  // name-matched whitelist, not a numeric guess: Sleeper's own `active`
+  // flag and `search_rank` both let a clearly-retired player through, so a
+  // real external source of "who's actually relevant right now" is what
+  // this needed rather than tuning the cutoff further. CSV-imported/manual
+  // players (source !== "sleeper" — the sample dataset, a real ADP/
+  // projections import) were never part of that noisy dump and skip this
+  // check entirely.
+  //
+  // The numeric relevance cutoff (default: ADP/search_rank worse than 250)
+  // still applies on top for everyone — it's what governs non-Sleeper
+  // imports, and further trims the tail of the reference list itself if
+  // it's set below 271. `undefined` (old localStorage saved before this
+  // setting existed) falls back to the same default as a fresh league.
+  // Anyone already on your roster or off the board stays visible
+  // regardless of either check — both only prune the *unrostered* pool.
   const poolRelevanceCutoff = league.poolRelevanceCutoff ?? DEFAULT_LEAGUE.poolRelevanceCutoff;
   const activePlayers = useMemo(() => {
     return players.filter((p) => {
       if (excluded.has(p.id)) return false;
-      if (poolRelevanceCutoff == null) return true;
       if (myTeam.has(p.id) || drafted.has(p.id)) return true;
+      if (p.source === "sleeper" && !isInReferenceList(p.name)) return false;
+      if (poolRelevanceCutoff == null) return true;
       const rank = p.adp ?? p.searchRank;
       return rank == null || rank <= poolRelevanceCutoff;
     });
@@ -167,7 +178,16 @@ export function WarRoom() {
   function handlePlayersSynced(newPlayers: Player[]) {
     // Preserve any local overrides (ADP/projections imported via CSV) keyed by id.
     const overridesById = new Map(players.filter((p) => p.source !== "sleeper").map((p) => [p.id, p]));
-    const merged = newPlayers.map((p) => overridesById.get(p.id) ?? p);
+    const merged = newPlayers.map((p) => {
+      const override = overridesById.get(p.id);
+      if (override) return override;
+      // Real ADP from the bundled reference list (reference-rankings.ts)
+      // beats Sleeper's own search_rank as a market signal — this is what
+      // actually feeds "Value vs ADP" real numbers for anyone the list
+      // covers, rather than falling back to Sleeper's proxy for everyone.
+      const referenceRank = getReferenceRank(p.name);
+      return referenceRank != null ? { ...p, adp: referenceRank } : p;
+    });
     setStore((prev) => ({ ...prev, players: merged, syncedAt: Date.now() }));
     savePlayers(merged);
   }
