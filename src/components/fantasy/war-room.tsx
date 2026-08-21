@@ -29,6 +29,7 @@ import {
   type DraftPosition,
 } from "@/lib/fantasy/storage";
 import { getReferenceRank, isInReferenceList } from "@/lib/fantasy/reference-rankings";
+import { getReal2025Stats } from "@/lib/fantasy/real-2025-stats";
 import { DEFAULT_LEAGUE, type DefenseRating, type LeagueSettings, type Player, type ScheduleEntry } from "@/lib/fantasy/types";
 import { DataImportPanel } from "./data-import-panel";
 import { Methodology } from "./methodology";
@@ -186,7 +187,17 @@ export function WarRoom() {
       // actually feeds "Value vs ADP" real numbers for anyone the list
       // covers, rather than falling back to Sleeper's proxy for everyone.
       const referenceRank = getReferenceRank(p.name);
-      return referenceRank != null ? { ...p, adp: referenceRank } : p;
+      // Real 2025 final stat line (real-2025-stats.ts), when bundled, beats
+      // the ADP-decay estimate curve entirely — it's an exact dot product
+      // with scoring settings instead of a hand-tuned shape approximation,
+      // so a top-heavy position's real cliff (RB) or flat range (QB in
+      // superflex) comes through as it actually is, not as a curve's guess.
+      const realStats = p.projStats ?? getReal2025Stats(p.name);
+      return {
+        ...p,
+        ...(referenceRank != null ? { adp: referenceRank } : null),
+        ...(realStats != null ? { projStats: realStats } : null),
+      };
     });
     setStore((prev) => ({ ...prev, players: merged, syncedAt: Date.now() }));
     savePlayers(merged);

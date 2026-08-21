@@ -103,12 +103,23 @@ export function valuePlayers(players: Player[], scoring: ScoringSettings): Value
     }
 
     const rankOf = (p: Player) => p.adp ?? p.searchRank ?? Number.POSITIVE_INFINITY;
-    const rankSorted = [...withoutProjection].sort((a, b) => rankOf(a) - rankOf(b));
+    // topRank has to come from the WHOLE position group, not just the
+    // players being estimated here. If it were taken from withoutProjection
+    // alone, a position whose true #1 happens to have a real stat line
+    // (increasingly common now that real-2025-stats.ts covers the top of
+    // most positions) would let whoever's #1 *among the leftover estimate
+    // group* start at gap 0 — handing some QB2/RB2-tier guy the position's
+    // full ceiling, exactly the ordinal-vs-real-rank distortion the last
+    // fix already eliminated for the ranking itself, just reintroduced here
+    // by only looking at a subset of the position.
+    const groupRankSorted = [...group].sort((a, b) => rankOf(a) - rankOf(b));
     // Falls back to 0 only in the degenerate case where nobody at this
     // position has any rank signal at all — otherwise the sort guarantees
-    // rankSorted[0] is the position's real top (finite) rank.
-    const firstRank = rankSorted.length > 0 ? rankOf(rankSorted[0]) : 0;
+    // groupRankSorted[0] is the position's real top (finite) rank.
+    const firstRank = groupRankSorted.length > 0 ? rankOf(groupRankSorted[0]) : 0;
     const topRank = Number.isFinite(firstRank) ? firstRank : 0;
+
+    const rankSorted = [...withoutProjection].sort((a, b) => rankOf(a) - rankOf(b));
     rankSorted.forEach((p) => {
       valued.push({
         ...p,
