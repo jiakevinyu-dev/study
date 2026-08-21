@@ -133,13 +133,14 @@ export function WarRoom() {
   // levels for the position they'd otherwise occupy. Kept around separately
   // (by id, from the raw pool) purely so the UI can offer an undo.
   //
-  // A relevance cutoff (default: ADP/search_rank worse than 300) is applied
+  // A relevance cutoff (default: ADP/search_rank worse than 250) is applied
   // the same way: Sleeper's full player dump runs to a couple thousand
-  // names, most of them practice-squad or deep-inactive players no redraft
-  // league will ever start, and that long tail is exactly what let a single
-  // real standout at a position get merged into a "Tier 1" alongside
-  // hundreds of irrelevant players. `undefined` (old localStorage saved
-  // before this setting existed) falls back to the same 300 default as a
+  // names, most of them practice-squad, deep-inactive, or stale/misflagged
+  // (retired players Sleeper's `active` flag didn't catch) entries no
+  // redraft league will ever start, and that long tail is exactly what let
+  // a single real standout at a position get merged into a "Tier 1"
+  // alongside hundreds of irrelevant players. `undefined` (old localStorage
+  // saved before this setting existed) falls back to the same default as a
   // fresh league. Anyone already on your roster or off the board stays
   // visible regardless — the cutoff only prunes the *unrostered* pool.
   const poolRelevanceCutoff = league.poolRelevanceCutoff ?? DEFAULT_LEAGUE.poolRelevanceCutoff;
