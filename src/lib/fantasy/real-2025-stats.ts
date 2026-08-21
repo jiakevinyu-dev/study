@@ -1,32 +1,30 @@
 /**
  * Real, final 2025-season box-score stat lines for the top ~213 fantasy-
  * relevant players, pasted in directly by the user from Sleeper's own
- * stats table. Used as a same-season baseline projection: a player's real
- * receptions/yards/TDs from a completed season, run through pointsFromStatLine
- * with the league's *current* scoring settings, rather than the ADP-decay
- * shape-estimate curve in scoring.ts.
+ * stats table.
  *
- * This is what actually fixes the RB-recommendation complaint: the decay
- * curve is a smooth, hand-tuned shape approximation that cannot know a
- * position's real value cliff is uneven (RB is famously top-heavy — the
- * "dead zone" — while QB is comparatively flat through the SUPERFLEX-
- * relevant range in a 2QB league). Real production says that directly:
- * plug it in and the exact dot product with your scoring settings reflects
- * the position's actual shape instead of a curve's guess at it.
+ * NOT live-wired into individual players' projStats. That was tried first
+ * and reverted: injecting one player's exact 2025 box score as his 2026
+ * projection gives one noisy season — full of injuries, TD-variance luck,
+ * and rookie randomness (see e.g. Lamar Jackson's 13-game, injury-shortened
+ * 2025, or Ashton Jeanty's modest rookie debut, both real ADP-elite players
+ * whose single-season real total badly understates their actual value) —
+ * the same weight as a real forward-looking projection, for over 200
+ * individual players. That's giving one data point too much confidence, not
+ * "recognizing how valuable a position is."
  *
- * Deliberately last season's real outcome, not a 2026 forecast — that is
- * an explicit, disclosed choice (a transparent "what actually happened"
- * baseline beats a guessed shape), not a claim about what will happen this
- * year. It will not reflect this season's injuries, role changes, rookies
- * with no 2025 log, coaching changes, etc. Anyone not in this list (rookies,
- * post-trade role changes, deep waiver names) still falls back to the ADP
- * decay curve, now fixed to key off real rank gap (see scoring.ts). CSV-
- * imported/manual players are untouched by this — it only fills in for
- * Sleeper-synced players lacking a real projection of their own.
+ * What it's actually used for: informing RANK_CURVE's position constants in
+ * scoring.ts in aggregate, where single-player noise mostly washes out. The
+ * concrete finding it supported: 2025's actual #1 fantasy scorer overall was
+ * a bell-cow RB (Christian McCaffrey, 416.6 pts under this league's scoring
+ * — see the file's data below), outscoring every real QB, WR, and TE that
+ * season. That's what raised RB's ceiling constant — a one-time, disclosed
+ * calibration nudge, not a per-player override. Every ADP-ranked player
+ * still comes off the same shared decay curve.
  *
- * Two-pt conversions aren't part of Sleeper's exported columns, so they're
- * omitted here (same as everywhere else this app has real stat data without
- * that column) — a small, disclosed gap, not a silent one.
+ * Kept here as the disclosed source for that calibration, and available via
+ * getReal2025Stats for future use, but not consulted by the live scoring
+ * path today.
  */
 
 import type { Position, StatProjection } from "./types";

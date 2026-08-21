@@ -55,10 +55,21 @@ export function pointsFromStatLine(stats: StatProjection, position: Position, sc
  * justified, and enough to make him out-rank clearly better, more
  * established options a market consensus has him only modestly ahead of.
  * Decaying by the real pick gap instead keeps that comparison honest.
+ *
+ * RB's ceiling (385) was recalibrated from a real final-2025 stat line the
+ * user pasted in — not by injecting individual real stat lines into
+ * individual players' points (that was tried and reverted: it pinned one
+ * noisy season, full of injuries and TD-variance luck, to specific players
+ * at full weight instead of just informing the position's shape). Used only
+ * in aggregate instead: 2025's actual RB1 (a bell-cow back) outscored every
+ * real QB, WR, and TE that season, meaning the old RB ceiling (340, well
+ * below QB's 380) undervalued how high real RB production actually tops
+ * out. Every ADP-ranked player still comes off the same shared curve; this
+ * is a one-time constant nudge from real evidence, not a per-player override.
  */
 const RANK_CURVE: Record<Position, { ceiling: number; floor: number; decay: number }> = {
   QB: { ceiling: 380, floor: 120, decay: 0.02 },
-  RB: { ceiling: 340, floor: 40, decay: 0.02 },
+  RB: { ceiling: 385, floor: 40, decay: 0.02 },
   WR: { ceiling: 320, floor: 40, decay: 0.02 },
   TE: { ceiling: 230, floor: 30, decay: 0.02 },
 };
@@ -105,9 +116,9 @@ export function valuePlayers(players: Player[], scoring: ScoringSettings): Value
     const rankOf = (p: Player) => p.adp ?? p.searchRank ?? Number.POSITIVE_INFINITY;
     // topRank has to come from the WHOLE position group, not just the
     // players being estimated here. If it were taken from withoutProjection
-    // alone, a position whose true #1 happens to have a real stat line
-    // (increasingly common now that real-2025-stats.ts covers the top of
-    // most positions) would let whoever's #1 *among the leftover estimate
+    // alone, a position whose true #1 happens to have a real projection on
+    // file (a CSV/manual import covering only some players at a position,
+    // for instance) would let whoever's #1 *among the leftover estimate
     // group* start at gap 0 — handing some QB2/RB2-tier guy the position's
     // full ceiling, exactly the ordinal-vs-real-rank distortion the last
     // fix already eliminated for the ranking itself, just reintroduced here
