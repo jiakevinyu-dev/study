@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { ChevronDown } from "lucide-react";
-import type { LeagueSettings, Position } from "@/lib/fantasy/types";
+import { DEFAULT_LEAGUE, type LeagueSettings, type Position } from "@/lib/fantasy/types";
 import { cn } from "@/lib/utils";
 import { Card, FieldLabel, inputClass } from "./ui";
 
@@ -56,12 +56,12 @@ export function SettingsPanel({ league, onChange }: Props) {
       .filter((n) => Number.isFinite(n) && n > 0);
     onChange({ ...league, playoffWeeks: weeks });
   };
-  const poolRelevanceCutoff = league.poolRelevanceCutoff ?? 300;
+  const poolRelevanceCutoff = league.poolRelevanceCutoff ?? DEFAULT_LEAGUE.poolRelevanceCutoff;
   const setPoolRelevanceCutoff = (raw: string) => {
     const trimmed = raw.trim();
     onChange({ ...league, poolRelevanceCutoff: trimmed === "" ? null : Math.max(1, Number(trimmed)) });
   };
-  const positionCaps = league.positionCaps ?? {};
+  const positionCaps = league.positionCaps ?? DEFAULT_LEAGUE.positionCaps;
   const setPositionCap = (pos: Position, raw: string) => {
     const trimmed = raw.trim();
     const next = { ...positionCaps };
@@ -184,9 +184,9 @@ export function SettingsPanel({ league, onChange }: Props) {
             </div>
             <p className="mt-1 text-xs text-muted">
               Once you&rsquo;ve rostered this many at a position, the Recommended Pick list stops suggesting more there —
-              e.g. TE defaults to 2, since with one starting slot and how deep the position runs, a 3rd is never worth a
-              pick over a scarcer position. This only hides them from recommendations; the full table (and Mine/Taken)
-              still work normally. Clear a field for no cap.
+              QB and TE default to 2 apiece (even in superflex, that covers both QB-eligible slots), so the rest of a
+              strong lineup ends up RB/WR, where the value actually is. This only hides them from recommendations; the
+              full table (and Mine/Taken) still work normally. Clear a field for no cap.
             </p>
           </div>
         </div>

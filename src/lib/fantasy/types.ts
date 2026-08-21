@@ -96,21 +96,25 @@ export type LeagueSettings = {
    * dump includes thousands of practice-squad/inactive-depth-chart names no
    * redraft league will ever start, and their long, near-flat tail was
    * what made a single true standout at a position get merged into a
-   * "Tier 1" alongside hundreds of irrelevant players. Null disables the
-   * cutoff (show everyone).
+   * "Tier 1" alongside hundreds of irrelevant players. Also the practical
+   * backstop against stale/misflagged data (e.g. a long-retired player
+   * Sleeper's `active` flag didn't catch) — nobody real drafts a player
+   * outside the top few hundred by ADP, whatever his profile says. Null
+   * disables the cutoff (show everyone).
    */
   poolRelevanceCutoff: number | null;
   /**
    * Realistic ceiling on how many players at a position you'd ever actually
-   * roster — e.g. TE: 2 in most leagues, since with only 1 starting slot
-   * (rarely FLEX-relevant given how deep the position runs) a 3rd TE is
-   * never worth a pick over depth at a scarcer position. Unset = no cap.
-   * This is a hard exclusion from the recommendation list once hit, not a
-   * soft nudge: the marginal-value/scarcity math alone doesn't know "we'll
-   * never actually roster more than N of these," only "this one has some
-   * value" — which, left unconstrained, undervalues just how replaceable a
-   * deep position's 3rd-string options are relative to literally anything
-   * at a scarcer spot.
+   * roster — e.g. TE: 2, QB: 2 in most leagues (even superflex, where the 2
+   * combined QB-eligible slots are exactly what 2 QBs covers), since a 3rd
+   * at either is never worth a pick over depth at RB/WR, which fill nearly
+   * every remaining slot in a well-built lineup. Unset = no cap. This is a
+   * hard exclusion from the recommendation list once hit, not a soft nudge:
+   * the marginal-value/scarcity math alone doesn't know "we'll never
+   * actually roster more than N of these," only "this one has some value"
+   * — which, left unconstrained, undervalues just how replaceable a deep
+   * position's 3rd-string options are relative to literally anything at a
+   * scarcer spot.
    */
   positionCaps: Partial<Record<Position, number>>;
 };
@@ -121,8 +125,8 @@ export const DEFAULT_LEAGUE: LeagueSettings = {
   roster: DEFAULT_ROSTER,
   playoffWeeks: [15, 16, 17],
   leagueName: "12-Team Superflex PPR (No TE Premium)",
-  poolRelevanceCutoff: 300,
-  positionCaps: { TE: 2 },
+  poolRelevanceCutoff: 250,
+  positionCaps: { QB: 2, TE: 2 },
 };
 
 /** Raw counting-stat projection for a season, used to derive fantasy points. */

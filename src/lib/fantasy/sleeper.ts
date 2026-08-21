@@ -119,6 +119,14 @@ export async function fetchSleeperPlayers(): Promise<Player[]> {
     // and get ranked. `active === true` is the one field Sleeper reliably
     // flips off for anyone no longer on an NFL roster.
     if (p.active !== true) continue;
+    // Belt-and-suspenders: reported live, a clearly-retired player (Tom
+    // Brady) still showed up despite the check above — meaning `active`
+    // isn't reliably flipped for every retired player either. `status` is a
+    // second, independent field Sleeper sets; only excluding the exact
+    // "Retired" value (not any other status) keeps this from accidentally
+    // catching real edge cases like injured-reserve players, who are very
+    // much still draftable.
+    if (p.status === "Retired") continue;
 
     const name = p.full_name ?? [p.first_name, p.last_name].filter(Boolean).join(" ");
     if (!name) continue;
