@@ -32,23 +32,40 @@ export function pointsFromStatLine(stats: StatProjection, position: Position, sc
 }
 
 /**
- * Position-specific decay curves for estimating fantasy points from a rank
- * (ADP, or Sleeper's search_rank as a proxy) when no real projection exists.
- * `ceiling` approximates the position's #1 overall points; `decay` controls
- * how quickly value falls off with rank. These are hand-tuned to produce a
- * realistic *shape* (steep early, flattening out) — an approximation for
- * sorting/tiering, not a projection to be taken as fact.
+ * Position-specific decay curves for estimating fantasy points from a real
+ * rank gap (ADP, or Sleeper's search_rank as a proxy) when no real
+ * projection exists. `ceiling` approximates the position's #1 overall
+ * points; `decay` controls how quickly value falls off with rank. These are
+ * hand-tuned to produce a realistic *shape* (steep early, flattening out) —
+ * an approximation for sorting/tiering, not a projection to be taken as
+ * fact.
+ *
+ * The decay input is the real numeric rank GAP from that position's own #1
+ * player (e.g. TE1 at overall rank 34 → gap 0; the 5th-ranked TE at overall
+ * rank 90 → gap 56), not an ordinal "1st, 2nd, 3rd..." position-rank count.
+ * That distinction is the whole fix for a real reported bug: two same-
+ * position players a *few ordinal spots* apart in a shallow position (TE
+ * has maybe 10 truly relevant options) can be tens of real draft picks
+ * apart, while the same ordinal gap in a deep position (RB/WR have 30+) is
+ * only a handful of picks. Decaying by ordinal position-rank exaggerated
+ * shallow-position gaps into cliffs the real market doesn't see — e.g. a
+ * TE ranked 5th at his position (but only 56 real picks behind the TE1)
+ * scored ~40 points higher than a TE ranked 9th just 21 picks further
+ * back, a far steeper penalty than the ~2-round real ADP gap between them
+ * justified, and enough to make him out-rank clearly better, more
+ * established options a market consensus has him only modestly ahead of.
+ * Decaying by the real pick gap instead keeps that comparison honest.
  */
 const RANK_CURVE: Record<Position, { ceiling: number; floor: number; decay: number }> = {
-  QB: { ceiling: 380, floor: 120, decay: 0.045 },
-  RB: { ceiling: 340, floor: 40, decay: 0.055 },
-  WR: { ceiling: 320, floor: 40, decay: 0.045 },
-  TE: { ceiling: 230, floor: 30, decay: 0.07 },
+  QB: { ceiling: 380, floor: 120, decay: 0.02 },
+  RB: { ceiling: 340, floor: 40, decay: 0.02 },
+  WR: { ceiling: 320, floor: 40, decay: 0.02 },
+  TE: { ceiling: 230, floor: 30, decay: 0.02 },
 };
 
-export function estimatePointsFromRank(positionRank: number, position: Position): number {
+export function estimatePointsFromRank(gapFromPositionTop: number, position: Position): number {
   const { ceiling, floor, decay } = RANK_CURVE[position];
-  const value = floor + (ceiling - floor) * Math.exp(-decay * (positionRank - 1));
+  const value = floor + (ceiling - floor) * Math.exp(-decay * gapFromPositionTop);
   return Math.round(value * 10) / 10;
 }
 
@@ -58,9 +75,11 @@ export function estimatePointsFromRank(positionRank: number, position: Position)
  */
 export function valuePlayers(players: Player[], scoring: ScoringSettings): ValuedPlayer[] {
   // First pass: players with a real projection get exact points immediately.
-  // Players without one need a rank *within their position among rank-known
-  // peers* before we can estimate — so bucket, sort by whatever rank signal
-  // we have (adp, then searchRank), and use that ordinal as positionRank.
+  // Players without one get estimated from the real numeric rank gap behind
+  // their position's own #1 player (see estimatePointsFromRank) — so bucket
+  // by position, sort by whatever rank signal we have (adp, then
+  // searchRank), and read that gap off the sorted list's own values, not
+  // its ordinal index.
   const byPosition = new Map<Position, Player[]>();
   for (const p of players) {
     const bucket = byPosition.get(p.position) ?? [];
@@ -83,15 +102,17 @@ export function valuePlayers(players: Player[], scoring: ScoringSettings): Value
       });
     }
 
-    const rankSorted = [...withoutProjection].sort((a, b) => {
-      const ra = a.adp ?? a.searchRank ?? Number.POSITIVE_INFINITY;
-      const rb = b.adp ?? b.searchRank ?? Number.POSITIVE_INFINITY;
-      return ra - rb;
-    });
-    rankSorted.forEach((p, idx) => {
+    const rankOf = (p: Player) => p.adp ?? p.searchRank ?? Number.POSITIVE_INFINITY;
+    const rankSorted = [...withoutProjection].sort((a, b) => rankOf(a) - rankOf(b));
+    // Falls back to 0 only in the degenerate case where nobody at this
+    // position has any rank signal at all — otherwise the sort guarantees
+    // rankSorted[0] is the position's real top (finite) rank.
+    const firstRank = rankSorted.length > 0 ? rankOf(rankSorted[0]) : 0;
+    const topRank = Number.isFinite(firstRank) ? firstRank : 0;
+    rankSorted.forEach((p) => {
       valued.push({
         ...p,
-        points: estimatePointsFromRank(idx + 1, position),
+        points: estimatePointsFromRank(rankOf(p) - topRank, position),
         pointsBasis: "adp-estimate",
         positionRank: 0,
       });

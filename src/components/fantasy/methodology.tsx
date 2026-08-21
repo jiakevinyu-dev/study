@@ -4,7 +4,7 @@ const ITEMS = [
   {
     title: "Points",
     body:
-      "If a player has an imported stat-line projection, points are the exact dot product of that stat line with your current scoring settings — change PPR value, TE premium, or any weight and every player's points update immediately. Without a projection, points are estimated from ADP/Sleeper rank via a position-specific decay curve (marked with * in the table) — a shape approximation for sorting, not a projection.",
+      "If a player has an imported stat-line projection, points are the exact dot product of that stat line with your current scoring settings — change PPR value, TE premium, or any weight and every player's points update immediately. Without a projection, points are estimated from a position-specific decay curve (marked with * in the table) keyed to the real numeric ADP/search_rank gap behind that position's own #1 player — not an ordinal '1st, 2nd, 3rd...' position-rank count. That distinction matters: a shallow position like TE has maybe 10 truly relevant options, so a few ordinal spots there can be tens of real draft picks apart, while the same ordinal gap in a deep position (RB/WR) is only a handful of picks — decaying by position-rank count exaggerated shallow-position gaps into cliffs the real market doesn't see. This is still a shape approximation for sorting, not a projection.",
   },
   {
     title: "Positional scarcity (VBD) — the default sort",
